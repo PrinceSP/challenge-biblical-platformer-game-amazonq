@@ -8,6 +8,16 @@ from typing import Dict, List, Tuple, Optional
 # Import constants from main game
 SCREEN_WIDTH = 1024
 SCREEN_HEIGHT = 768
+
+# Game states and locations
+class Location:
+    PALACE = "palace"
+    EGYPT_CITY = "egypt_city"
+    DESERT = "desert"
+    RED_SEA = "red_sea"
+    WILDERNESS = "wilderness"
+    MOUNT_SINAI = "mount_sinai"
+    JERUSALEM = "jerusalem"
 FPS = 60
 GRAVITY = 0.8
 JUMP_STRENGTH = -15
@@ -67,7 +77,7 @@ class Player:
         self.rect.bottom = SCREEN_HEIGHT - 50
         
     def update(self, dt):
-        """Update player state with enhanced smart sound system"""
+        """Update player state with enhanced physics and smart sound system"""
         keys = pygame.key.get_pressed()
         
         # Handle interaction state
@@ -93,7 +103,7 @@ class Player:
             self.facing_right = True
             self.is_walking = True
         
-        # Smart walking sound system
+        # Smart walking sound system with realistic timing
         if hasattr(self, 'sound_manager') and self.sound_manager and self.on_ground:
             if self.is_walking:
                 if not self.was_walking_last_frame:
@@ -102,10 +112,10 @@ class Player:
                     self.sound_manager.play_single_step()  # Play single step sound
                     print("🦶 Started walking - single step")
                 elif current_time - self.movement_start_time >= self.continuous_walk_threshold:
-                    # Been walking for a while, switch to looping single step
+                    # Been walking for a while, switch to timed continuous walking
                     if not self.sound_manager.is_walking_continuously:
                         self.sound_manager.start_continuous_walking()
-                        print("🚶 Switched to continuous walking (looping single_step.wav)")
+                        print("🚶 Switched to realistic continuous walking (timed steps)")
             else:
                 if self.was_walking_last_frame:
                     # Just stopped walking
@@ -115,27 +125,51 @@ class Player:
         # Update walking state for next frame
         self.was_walking_last_frame = self.is_walking
         
-        # Jumping with sound effect
+        # Jumping with sound effect - check BEFORE gravity is applied
         if keys[pygame.K_UP] and self.on_ground:
             self.velocity_y = JUMP_STRENGTH
             self.on_ground = False
             self.is_jumping = True
+            print(f"🦘 Moses jumping from y={self.rect.y}")
             # Play jump sound if sound manager is available
             if hasattr(self, 'sound_manager') and self.sound_manager:
                 self.sound_manager.play_jump_sound()
         
-        # Apply gravity
+        # Alternative jump key (SPACE)
+        if keys[pygame.K_SPACE] and self.on_ground:
+            self.velocity_y = JUMP_STRENGTH
+            self.on_ground = False
+            self.is_jumping = True
+            print(f"🦘 Moses jumping with SPACE from y={self.rect.y}")
+            if hasattr(self, 'sound_manager') and self.sound_manager:
+                self.sound_manager.play_jump_sound()
+        
+        # IMPROVED GRAVITY SYSTEM
+        # Always apply gravity when not on ground
         if not self.on_ground:
             self.velocity_y += GRAVITY
+            # Terminal velocity to prevent infinite acceleration
+            if self.velocity_y > 15:
+                self.velocity_y = 15
         
-        # Update position
+        # Store old position for collision detection
         old_x = self.rect.x
+        old_y = self.rect.y
+        
+        # Update horizontal position
         self.rect.x += self.velocity_x
+        
+        # Update vertical position
         self.rect.y += self.velocity_y
         
         # Debug: Print movement info occasionally
         if self.velocity_x != 0 and int(old_x) % 50 == 0:
             print(f"Moses moving: x={self.rect.x}, y={self.rect.y}, on_ground={self.on_ground}")
+        
+        # Debug: Print falling info
+        if not self.on_ground and self.velocity_y > 0:
+            if int(old_y) % 20 == 0:  # Print every 20 pixels of falling
+                print(f"🪂 Moses falling: y={self.rect.y}, velocity_y={self.velocity_y}")
         
         # Update animation based on state
         self.update_animation_state()
@@ -343,7 +377,7 @@ class NPC:
         pass
     
     def render(self, screen, camera_offset):
-        """Render NPC with maximum visibility"""
+        """Render NPC with maximum visibility and interaction prompts"""
         render_rect = self.rect.copy()
         render_rect.x -= camera_offset[0]
         render_rect.y -= camera_offset[1]
@@ -359,6 +393,9 @@ class NPC:
                 if not self.facing_right:
                     sprite = pygame.transform.flip(sprite, True, False)
                 screen.blit(sprite, render_rect)
+                
+                # Add bright outline to make sprite more visible
+                pygame.draw.rect(screen, (255, 255, 0), render_rect, 3)  # Yellow outline
             else:
                 # ENHANCED fallback with maximum visibility
                 colors = {
@@ -379,14 +416,30 @@ class NPC:
                 # Head
                 pygame.draw.circle(screen, (255, 255, 255), (render_rect.centerx, render_rect.top + 12), 8)
                 pygame.draw.circle(screen, (0, 0, 0), (render_rect.centerx, render_rect.top + 12), 8, 2)
-                
-                # Eyes
-                pygame.draw.circle(screen, (0, 0, 0), (render_rect.centerx - 3, render_rect.top + 10), 2)
-                pygame.draw.circle(screen, (0, 0, 0), (render_rect.centerx + 3, render_rect.top + 10), 2)
-                
-                # Body details
-                pygame.draw.rect(screen, (0, 0, 0), (render_rect.centerx - 6, render_rect.top + 20, 12, 20))
             
+            # ALWAYS show NPC type label for debugging
+            font = pygame.font.Font(None, 20)
+            label_text = font.render(self.npc_type.replace('_', ' ').title(), True, (255, 255, 255))
+            label_bg = pygame.Rect(render_rect.centerx - 40, render_rect.top - 25, 80, 20)
+            pygame.draw.rect(screen, (0, 0, 0), label_bg)
+            pygame.draw.rect(screen, (255, 255, 0), label_bg, 2)
+            screen.blit(label_text, (label_bg.left + 5, label_bg.top + 2))
+            
+            # Show interaction prompt if player is nearby
+            if hasattr(self, 'showing_prompt') and self.showing_prompt:
+                prompt_font = pygame.font.Font(None, 24)
+                prompt_text = prompt_font.render("Press E to Interact", True, (255, 255, 0))
+                prompt_bg = pygame.Rect(render_rect.centerx - 60, render_rect.bottom + 5, 120, 25)
+                pygame.draw.rect(screen, (0, 0, 0), prompt_bg)
+                pygame.draw.rect(screen, (255, 255, 0), prompt_bg, 2)
+                screen.blit(prompt_text, (prompt_bg.left + 5, prompt_bg.top + 3))
+            
+            # Show position for debugging
+            pos_font = pygame.font.Font(None, 16)
+            pos_text = pos_font.render(f"({self.rect.x},{self.rect.y})", True, (255, 255, 255))
+            screen.blit(pos_text, (render_rect.left, render_rect.bottom + 30))
+    
+    def can_interact_with(self, player):
             # ENHANCED interaction indicator - much more visible
             indicator_y = render_rect.top - 25
             # Large white background
@@ -511,6 +564,8 @@ class LevelManager:
     def load_level(self, location, sprites):
         """Load a specific level"""
         self.current_location = location
+        
+        # Clear existing level data
         self.platforms.clear()
         self.items.clear()
         self.npcs.clear()
@@ -519,12 +574,12 @@ class LevelManager:
         
         # Load background
         if sprites and 'backgrounds' in sprites:
-            self.background = sprites['backgrounds'].get(location.value)
+            self.background = sprites['backgrounds'].get(location)
         
         # Create level based on location
-        if location == Location.PALACE:
+        if location == Location.PALACE or location == "palace" or str(location) == "Location.PALACE":
             self.create_palace_level(sprites)
-        elif location == Location.EGYPT_CITY:
+        elif location == Location.EGYPT_CITY or location == "egypt_city":
             self.create_egypt_city_level(sprites)
         elif location == Location.DESERT:
             self.create_desert_level(sprites)
@@ -538,21 +593,23 @@ class LevelManager:
             self.create_jerusalem_level(sprites)
     
     def create_palace_level(self, sprites):
-        """Create the palace level with NPCs at Moses' EXACT Y position"""
+        """Create the palace level with NPCs positioned at Moses' EXACT Y level"""
         # Extended ground platform
-        ground_y = SCREEN_HEIGHT - 50
-        self.platforms.append(Platform(0, ground_y, SCREEN_WIDTH * 5, 50))
+        ground_y = SCREEN_HEIGHT - 50  # 718
+        self.platforms.append(Platform(0, ground_y, SCREEN_WIDTH * 8, 50))  # Extended for more NPCs
         
-        # Elevated platforms for jumping puzzles
-        self.platforms.append(Platform(200, SCREEN_HEIGHT - 150, 200, 20))
-        self.platforms.append(Platform(500, SCREEN_HEIGHT - 250, 200, 20))
-        self.platforms.append(Platform(800, SCREEN_HEIGHT - 180, 150, 20))
-        self.platforms.append(Platform(1200, SCREEN_HEIGHT - 220, 200, 20))
-        self.platforms.append(Platform(1600, SCREEN_HEIGHT - 160, 180, 20))
-        self.platforms.append(Platform(2000, SCREEN_HEIGHT - 200, 200, 20))
-        self.platforms.append(Platform(2400, SCREEN_HEIGHT - 140, 150, 20))
+        # Elevated platforms for jumping puzzles - positioned to not interfere with ground movement
+        self.platforms.append(Platform(300, SCREEN_HEIGHT - 150, 150, 20))   # After first NPC
+        self.platforms.append(Platform(600, SCREEN_HEIGHT - 250, 150, 20))   # Between NPCs
+        self.platforms.append(Platform(900, SCREEN_HEIGHT - 180, 150, 20))   # After second NPC
+        self.platforms.append(Platform(1300, SCREEN_HEIGHT - 220, 150, 20))  # Mid-level
+        self.platforms.append(Platform(1700, SCREEN_HEIGHT - 160, 150, 20))  # After priest
+        self.platforms.append(Platform(2100, SCREEN_HEIGHT - 200, 150, 20))  # Between NPCs
+        self.platforms.append(Platform(2500, SCREEN_HEIGHT - 140, 150, 20))  # After checkpoint
+        self.platforms.append(Platform(2900, SCREEN_HEIGHT - 190, 150, 20))  # Near end
+        self.platforms.append(Platform(3300, SCREEN_HEIGHT - 170, 150, 20))  # Final platform
         
-        # Items positioned on platforms and ground
+        # Items positioned strategically near NPCs
         self.items.append(ItemPickup(250, SCREEN_HEIGHT - 180, "stone", sprites))
         self.items.append(ItemPickup(550, SCREEN_HEIGHT - 280, "water", sprites))
         self.items.append(ItemPickup(850, SCREEN_HEIGHT - 210, "bread", sprites))
@@ -560,38 +617,68 @@ class LevelManager:
         self.items.append(ItemPickup(1650, SCREEN_HEIGHT - 190, "meat", sprites))
         self.items.append(ItemPickup(2050, SCREEN_HEIGHT - 230, "armor_of_god", sprites))
         self.items.append(ItemPickup(2450, SCREEN_HEIGHT - 170, "staff", sprites))
+        self.items.append(ItemPickup(2850, SCREEN_HEIGHT - 220, "bread", sprites))
+        self.items.append(ItemPickup(3250, SCREEN_HEIGHT - 200, "water", sprites))
         
-        # CRITICAL: Moses Y position calculation
-        # Moses rect.bottom = SCREEN_HEIGHT - 50 = 718
-        # Moses rect.top = 718 - 48 = 670
-        # So NPCs should have rect.top = 670 to be at same level
-        moses_y_position = SCREEN_HEIGHT - 50 - 48  # 670
+        # CRITICAL FIX: Moses Y position calculation
+        # Moses rect: x=150, y=670, bottom=718
+        # So NPCs should be at y=670 to match Moses exactly
+        moses_ground_y = 670  # Exact Y position where Moses stands
         
-        print(f"🎯 Setting NPCs at Y position: {moses_y_position} (same as Moses)")
+        # STRATEGIC NPC PLACEMENT - All at Moses' exact Y level for visibility
         
-        # Create NPCs at Moses' exact Y position
-        self.npcs.append(NPC(400, moses_y_position, "palace_guard", "guard_dialogue", sprites))
-        self.npcs.append(NPC(700, moses_y_position, "hebrew_slave", "slave_dialogue", sprites))
-        self.npcs.append(NPC(1100, moses_y_position, "egyptian_citizen", "citizen_dialogue", sprites))
-        self.npcs.append(NPC(1500, moses_y_position, "priest", "priest_dialogue", sprites))
-        self.npcs.append(NPC(1900, moses_y_position, "hebrew_slave", "slave_dialogue", sprites))
-        self.npcs.append(NPC(2300, moses_y_position, "palace_guard", "guard_dialogue", sprites))
-        self.npcs.append(NPC(300, moses_y_position, "egyptian_citizen", "royal_servant_dialogue", sprites))
-        self.npcs.append(NPC(2100, moses_y_position, "palace_guard", "taskmaster_dialogue", sprites))
+        # NPC 1: Palace Guard at x=400 (early encounter) - CLOSE TO STARTING POSITION
+        npc1 = NPC(400, moses_ground_y, "palace_guard", "guard_dialogue", sprites)
+        self.npcs.append(npc1)
         
-        # Verify NPC positions
-        for i, npc in enumerate(self.npcs):
-            print(f"📍 NPC {i+1} ({npc.npc_type}): x={npc.rect.x}, y={npc.rect.y}, bottom={npc.rect.bottom}")
+        # NPC 2: Hebrew Slave at x=800 (after first platform)
+        npc2 = NPC(800, moses_ground_y, "hebrew_slave", "slave_dialogue", sprites)
+        self.npcs.append(npc2)
         
-        # Enemies at the same position
-        self.enemies.append(Enemy(600, moses_y_position, "egyptian_soldier", sprites))
-        self.enemies.append(Enemy(1000, moses_y_position, "egyptian_soldier", sprites))
-        self.enemies.append(Enemy(1400, moses_y_position, "egyptian_soldier", sprites))
-        self.enemies.append(Enemy(1800, moses_y_position, "egyptian_soldier", sprites))
-        self.enemies.append(Enemy(2200, moses_y_position, "egyptian_soldier", sprites))
+        # NPC 3: Egyptian Citizen at x=1200 (mid-level)
+        npc3 = NPC(1200, moses_ground_y, "egyptian_citizen", "citizen_dialogue", sprites)
+        self.npcs.append(npc3)
+        
+        # NPC 4: Priest at x=1600 (spiritual encounter)
+        npc4 = NPC(1600, moses_ground_y, "priest", "priest_dialogue", sprites)
+        self.npcs.append(npc4)
+        
+        # NPC 5: Another Hebrew Slave at x=2000 (resistance member)
+        npc5 = NPC(2000, moses_ground_y, "hebrew_slave", "resistance_dialogue", sprites)
+        self.npcs.append(npc5)
+        
+        # NPC 6: Palace Guard at x=2400 (checkpoint)
+        npc6 = NPC(2400, moses_ground_y, "palace_guard", "checkpoint_dialogue", sprites)
+        self.npcs.append(npc6)
+        
+        # NPC 7: Egyptian Citizen at x=2800 (informant)
+        npc7 = NPC(2800, moses_ground_y, "egyptian_citizen", "informant_dialogue", sprites)
+        self.npcs.append(npc7)
+        
+        # NPC 8: Final Priest at x=3200 (wisdom giver)
+        npc8 = NPC(3200, moses_ground_y, "priest", "wisdom_dialogue", sprites)
+        self.npcs.append(npc8)
+        
+        # ADD EXTRA CLOSE NPCs for immediate testing
+        # NPC 9: Very close Palace Guard at x=300 (right after Moses starts)
+        npc9 = NPC(300, moses_ground_y, "palace_guard", "guard_dialogue", sprites)
+        self.npcs.append(npc9)
+        
+        # NPC 10: Hebrew Slave at x=500 (easy to reach)
+        npc10 = NPC(500, moses_ground_y, "hebrew_slave", "slave_dialogue", sprites)
+        self.npcs.append(npc10)
+        
+        # Enemies positioned between NPCs for challenge
+        self.enemies.append(Enemy(600, moses_ground_y, "egyptian_soldier", sprites))
+        self.enemies.append(Enemy(1000, moses_ground_y, "egyptian_soldier", sprites))
+        self.enemies.append(Enemy(1400, moses_ground_y, "egyptian_soldier", sprites))
+        self.enemies.append(Enemy(1800, moses_ground_y, "egyptian_soldier", sprites))
+        self.enemies.append(Enemy(2200, moses_ground_y, "egyptian_soldier", sprites))
+        self.enemies.append(Enemy(2600, moses_ground_y, "egyptian_soldier", sprites))
+        self.enemies.append(Enemy(3000, moses_ground_y, "egyptian_soldier", sprites))
         
         # Exit to Egypt City at the far end
-        self.exit_zones.append(ExitZone(SCREEN_WIDTH * 4.5, ground_y - 100, 100, 100, Location.EGYPT_CITY))
+        self.exit_zones.append(ExitZone(SCREEN_WIDTH * 7.5, ground_y - 100, 100, 100, Location.EGYPT_CITY))
     
     def create_egypt_city_level(self, sprites):
         """Create Egypt city level with NPCs at Moses' level"""
