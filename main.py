@@ -18,6 +18,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 try:
     from game_classes import *
     from game_systems import *
+    from sound_manager import SoundManager  # Import the new sound manager
     from font_manager import initialize_font_manager, get_font_manager
 except ImportError as e:
     print(f"Import error: {e}")
@@ -67,6 +68,10 @@ class Location(Enum):
 
 class MosesAdventureGame:
     def __init__(self):
+        # Enhanced audio initialization
+        pygame.mixer.pre_init(frequency=22050, size=-16, channels=2, buffer=512)
+        pygame.mixer.init()
+        
         self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
         pygame.display.set_caption("Moses Adventure - Biblical Platformer")
         self.clock = pygame.time.Clock()
@@ -82,12 +87,14 @@ class MosesAdventureGame:
         self.level_manager = LevelManager()
         self.inventory = Inventory()
         self.dialogue_system = DialogueSystem()
+        self.dialogue_system.game_instance = self  # Connect for health effects
         self.sound_manager = SoundManager()
         self.moral_system = MoralSystem()
         self.visual_feedback = VisualFeedback()
         
-        # Connect moral system to dialogue system
+        # Connect systems
         self.dialogue_system.moral_system = self.moral_system
+        self.dialogue_system.set_sound_manager(self.sound_manager)  # Connect sound manager to dialogue
         
         # Load sprites
         self.sprites = self.load_sprites()
@@ -116,8 +123,22 @@ class MosesAdventureGame:
         print("- F11: Toggle Fullscreen")
         
     def load_sprites(self):
-        """Load all game sprites including NPCs for every location"""
+        """Load all game sprites including NPCs and tiles for enhanced UI"""
         sprites = {}
+        
+        # Load tile sprites for enhanced UI
+        sprites['tiles'] = {}
+        tile_path = "assets/tiles/"
+        if os.path.exists(tile_path):
+            tile_files = ['ground', 'stone_platform', 'palace_wall', 'sand', 'water']
+            for tile_name in tile_files:
+                sprite = self.load_sprite(f"{tile_path}{tile_name}.png")
+                if sprite:
+                    sprites['tiles'][tile_name] = sprite
+                    print(f"✅ Loaded tile: {tile_name}")
+                else:
+                    # Create fallback tile
+                    sprites['tiles'][tile_name] = self.create_tile_fallback(tile_name)
         
         # Load player sprites
         sprites['player'] = {}
@@ -141,6 +162,7 @@ class MosesAdventureGame:
             sprite = self.load_sprite(f"{npc_path}{npc_type}.png")
             if sprite:
                 sprites['npcs'][npc_type] = sprite
+                print(f"✅ Loaded NPC: {npc_type}")
             else:
                 # Create fallback colored sprite
                 sprites['npcs'][npc_type] = self.create_npc_fallback(npc_type)
@@ -209,7 +231,28 @@ class MosesAdventureGame:
         for bg_type in bg_types:
             sprites['backgrounds'][bg_type] = self.load_sprite(f"{bg_path}{bg_type}.png")
         
+        print(f"🎨 Loaded sprites: {len(sprites['tiles'])} tiles, {len(sprites['npcs'])} NPCs, {len(sprites['player'])} player, {len(sprites.get('enemies', {}))} enemies")
         return sprites
+    
+    def create_tile_fallback(self, tile_name):
+        """Create fallback tile sprites with appropriate colors"""
+        surface = pygame.Surface((32, 32))
+        
+        tile_colors = {
+            'ground': (139, 69, 19),      # Brown
+            'stone_platform': (128, 128, 128),  # Gray
+            'palace_wall': (218, 165, 32),      # Golden
+            'sand': (238, 203, 173),            # Sandy
+            'water': (64, 164, 223)             # Blue
+        }
+        
+        color = tile_colors.get(tile_name, (100, 100, 100))
+        surface.fill(color)
+        
+        # Add simple pattern
+        pygame.draw.rect(surface, (color[0] + 20, color[1] + 20, color[2] + 20), (0, 0, 32, 32), 2)
+        
+        return surface
     
     def create_npc_fallback(self, npc_type):
         """Create a colored fallback sprite for NPCs with better visibility"""
@@ -268,6 +311,7 @@ class MosesAdventureGame:
     def run(self):
         """Main game loop with 60 FPS optimization"""
         print("Starting Moses Adventure...")
+        print("Controls: Arrow keys to move, E to interact, M for music, S for sound")
         
         while self.running:
             dt = self.clock.tick(FPS) / 1000.0  # Delta time in seconds
@@ -308,6 +352,8 @@ class MosesAdventureGame:
                 self.dialogue_system.handle_event(event)
                 if not self.dialogue_system.active:
                     self.state = GameState.PLAYING
+                    # Remove the NPC that was just talked to
+                    self.remove_interacted_npc()
             elif self.state == GameState.INVENTORY:
                 self.inventory.handle_event(event)
                 if not self.inventory.active:
@@ -340,6 +386,8 @@ class MosesAdventureGame:
             elif event.key == pygame.K_ESCAPE:
                 self.paused = True
                 self.state = GameState.PAUSED
+                # Play pause sound effect
+                self.sound_manager.play_pause_sound()
             elif event.key == pygame.K_m:
                 self.sound_manager.toggle_music()
             elif event.key == pygame.K_s:
@@ -377,7 +425,10 @@ class MosesAdventureGame:
     def start_game(self):
         """Initialize and start the game with opening dialogue"""
         # Place player properly on the ground
-        self.player = Player(150, SCREEN_HEIGHT - 100, self.sprites.get('player', {}))
+        # Ground platform is at y=718, player height is 48, so player should be at y=670
+        ground_y = SCREEN_HEIGHT - 50  # 718
+        player_y = ground_y - 48  # 670 (player height is 48)
+        self.player = Player(150, player_y, self.sprites.get('player', {}))
         
         # Debug: Show Moses' exact position
         print(f"🎯 Moses Position: x={self.player.rect.x}, y={self.player.rect.y}, bottom={self.player.rect.bottom}")
@@ -410,11 +461,19 @@ class MosesAdventureGame:
     
     def update(self, dt):
         """Update game state with delta time for smooth 60 FPS"""
+        # Update sound manager (for walking sound timing)
+        self.sound_manager.update_walking_sound(dt)
+        
         if self.state == GameState.PLAYING:
             if self.player:
+                # Update player physics
                 self.player.update(dt)
-                self.camera.follow_player(self.player)
+                
+                # Check collisions to determine ground state
                 self.check_collisions()
+                
+                # Update camera and other systems
+                self.camera.follow_player(self.player)
                 self.check_interactions()
                 self.check_level_transitions()
                 
@@ -433,117 +492,234 @@ class MosesAdventureGame:
         if not self.player:
             return
         
-        # Platform collisions with realistic physics
-        platforms = self.level_manager.get_platforms()
-        for platform in platforms:
-            if self.player.rect.colliderect(platform.rect):
-                self.handle_platform_collision(platform)
+        # Reset ground state - player will fall unless standing on something
+        self.player.on_ground = False
         
-        # Item collisions
-        items = self.level_manager.get_items()
-        for item in items[:]:  # Use slice to avoid modification during iteration
-            if self.player.rect.colliderect(item.rect):
-                self.collect_item(item)
-        
-        # Enemy collisions
-        enemies = self.level_manager.get_enemies()
-        for enemy in enemies:
-            if self.player.rect.colliderect(enemy.rect):
-                self.handle_enemy_collision(enemy)
+        try:
+            # Platform collisions with realistic physics
+            platforms = self.level_manager.get_platforms()
+            for platform in platforms:
+                if platform and hasattr(platform, 'rect') and self.player.rect.colliderect(platform.rect):
+                    self.handle_platform_collision(platform)
+            
+            # Item collisions
+            items = self.level_manager.get_items()
+            for item in items[:]:  # Use slice to avoid modification during iteration
+                if item and hasattr(item, 'rect') and self.player.rect.colliderect(item.rect):
+                    self.collect_item(item)
+            
+            # Enemy collisions
+            enemies = self.level_manager.get_enemies()
+            for enemy in enemies:
+                if enemy and hasattr(enemy, 'rect') and self.player.rect.colliderect(enemy.rect):
+                    self.handle_enemy_collision(enemy)
+        except Exception as e:
+            print(f"⚠️  Collision check error: {e}")
+            # Continue game without crashing
     
     def handle_platform_collision(self, platform):
         """Handle collision with platforms with realistic physics"""
+        if not self.player or not platform:
+            return
+            
         player = self.player
         
-        # Calculate overlap
-        overlap_x = min(player.rect.right - platform.rect.left, 
-                       platform.rect.right - player.rect.left)
-        overlap_y = min(player.rect.bottom - platform.rect.top, 
-                       platform.rect.bottom - player.rect.top)
-        
-        # Resolve collision based on smallest overlap
-        if overlap_x < overlap_y:
-            # Horizontal collision
-            if player.rect.centerx < platform.rect.centerx:
-                player.rect.right = platform.rect.left
+        try:
+            # Calculate overlap
+            overlap_x = min(player.rect.right - platform.rect.left, 
+                           platform.rect.right - player.rect.left)
+            overlap_y = min(player.rect.bottom - platform.rect.top, 
+                           platform.rect.bottom - player.rect.top)
+            
+            # Resolve collision based on smallest overlap
+            if overlap_x < overlap_y:
+                # Horizontal collision
+                if player.rect.centerx < platform.rect.centerx:
+                    player.rect.right = platform.rect.left
+                else:
+                    player.rect.left = platform.rect.right
+                if hasattr(player, 'velocity_x'):
+                    player.velocity_x = 0
             else:
-                player.rect.left = platform.rect.right
-            player.velocity_x = 0
-        else:
-            # Vertical collision
-            if player.rect.centery < platform.rect.centery:
-                # Landing on top
-                player.rect.bottom = platform.rect.top
-                player.velocity_y = 0
-                player.on_ground = True
-                player.is_jumping = False
-                # Create dust effect
-                self.visual_feedback.create_dust_effect(player.rect.centerx, player.rect.bottom)
-                self.sound_manager.play_sound("jump")  # Landing sound
-            else:
-                # Hitting from below
-                player.rect.top = platform.rect.bottom
-                player.velocity_y = 0
+                # Vertical collision
+                if player.rect.centery < platform.rect.centery:
+                    # Landing on top
+                    player.rect.bottom = platform.rect.top
+                    if hasattr(player, 'velocity_y'):
+                        player.velocity_y = 0
+                    if hasattr(player, 'on_ground'):
+                        player.on_ground = True
+                    if hasattr(player, 'is_jumping'):
+                        player.is_jumping = False
+                    # Create dust effect
+                    if hasattr(self, 'visual_feedback'):
+                        self.visual_feedback.create_dust_effect(player.rect.centerx, player.rect.bottom)
+                    # Landing sound
+                    if hasattr(self.sound_manager, 'play_sound'):
+                        self.sound_manager.play_sound("jump")
+                else:
+                    # Hitting from below
+                    player.rect.top = platform.rect.bottom
+                    if hasattr(player, 'velocity_y'):
+                        player.velocity_y = 0
+        except Exception as e:
+            print(f"⚠️  Collision error: {e}")
+            # Prevent crash by doing basic collision resolution
+            if hasattr(player, 'rect') and hasattr(platform, 'rect'):
+                player.rect.bottom = platform.rect.top - 1
     
     def collect_item(self, item):
         """Collect an item and add to inventory"""
-        self.inventory.add_item(item.item_type)
-        self.level_manager.remove_item(item)
-        self.sound_manager.play_sound("item_collect")
-        self.visual_feedback.show_item_collected(item.item_type, item.rect.center)
+        try:
+            self.inventory.add_item(item.item_type)
+            self.level_manager.remove_item(item)
+            if hasattr(self.sound_manager, 'play_sound'):
+                self.sound_manager.play_sound("pickup")
+            
+            # Show visual feedback if available
+            if hasattr(self.visual_feedback, 'show_item_collected'):
+                self.visual_feedback.show_item_collected(item.item_type, item.rect.center)
+            elif hasattr(self.visual_feedback, 'create_pickup_effect'):
+                self.visual_feedback.create_pickup_effect(item.rect.centerx, item.rect.centery)
+            
+            print(f"📦 Collected {item.item_type}")
+        except Exception as e:
+            print(f"⚠️  Item collection error: {e}")
     
     def handle_enemy_collision(self, enemy):
-        """Handle collision with enemies"""
-        if self.player.velocity_y > 0 and self.player.rect.bottom <= enemy.rect.top + 10:
-            # Player jumped on enemy
-            enemy.defeated = True
-            self.player.velocity_y = JUMP_STRENGTH // 2  # Small bounce
-            self.sound_manager.play_sound("enemy_defeat")
-            self.visual_feedback.create_sparkle_effect(enemy.rect.center)
-        else:
-            # Player takes damage
-            if self.player.take_damage(10):
-                self.state = GameState.GAME_OVER
-            self.sound_manager.play_sound("player_hurt")
-            self.visual_feedback.create_damage_effect(self.player.rect.center)
+        """Handle collision with enemies - damage instead of instant death"""
+        try:
+            if self.player.velocity_y > 0 and self.player.rect.bottom <= enemy.rect.top + 10:
+                # Player jumped on enemy
+                if hasattr(enemy, 'defeated'):
+                    enemy.defeated = True
+                self.player.velocity_y = JUMP_STRENGTH // 2  # Small bounce
+                if hasattr(self.sound_manager, 'play_sound'):
+                    self.sound_manager.play_sound("enemy_defeat")
+                if hasattr(self.visual_feedback, 'create_sparkle_effect'):
+                    self.visual_feedback.create_sparkle_effect(enemy.rect.center)
+                print("⚔️  Enemy defeated!")
+            else:
+                # Player takes damage instead of instant death
+                damage = 15
+                self.player.health -= damage
+                print(f"💔 Moses took {damage} damage! Health: {self.player.health}/100")
+                
+                # Push player back to avoid continuous damage
+                if self.player.rect.centerx < enemy.rect.centerx:
+                    self.player.rect.x -= 30
+                else:
+                    self.player.rect.x += 30
+                
+                # Play hurt sound
+                if hasattr(self.sound_manager, 'play_sound'):
+                    self.sound_manager.play_sound("player_hurt")
+                
+                # Visual feedback
+                if hasattr(self.visual_feedback, 'create_dust_effect'):
+                    self.visual_feedback.create_dust_effect(self.player.rect.centerx, self.player.rect.centery)
+                
+                # Check for game over only when health reaches 0
+                if self.player.health <= 0:
+                    print("💀 Moses has fallen! Game Over!")
+                    self.state = GameState.GAME_OVER
+        except Exception as e:
+            print(f"⚠️  Enemy collision error: {e}")
+            # Fallback: just push player away
+            if self.player.rect.centerx < enemy.rect.centerx:
+                self.player.rect.x -= 20
+            else:
+                self.player.rect.x += 20
+    
+    def remove_interacted_npc(self):
+        """Remove the NPC that was just interacted with"""
+        if hasattr(self, 'last_interacted_npc') and self.last_interacted_npc:
+            try:
+                # Mark NPC as completed and move them off-screen
+                npc = self.last_interacted_npc
+                npc.rect.x = -1000  # Move far off-screen
+                npc.completed = True
+                print(f"✅ {npc.npc_type} completed their task and moved away")
+                
+                # Alternative: Remove from level manager if possible
+                if hasattr(self.level_manager, 'remove_npc'):
+                    self.level_manager.remove_npc(npc)
+                
+                self.last_interacted_npc = None
+            except Exception as e:
+                print(f"⚠️  Error removing NPC: {e}")
     
     def check_interactions(self):
-        """Check for NPC interactions with proper feedback"""
+        """Check for NPC interactions with enhanced visibility and feedback"""
         if not self.player:
             return
+        
+        try:
+            npcs = self.level_manager.get_npcs()
+            keys = pygame.key.get_pressed()
             
-        npcs = self.level_manager.get_npcs()
-        keys = pygame.key.get_pressed()
-        
-        interaction_found = False
-        
-        for npc in npcs:
-            # Check if player is close enough to interact
-            distance = abs(self.player.rect.centerx - npc.rect.centerx)
-            if distance < 60:  # Interaction range
-                interaction_found = True
-                
-                # Show interaction prompt
-                self.visual_feedback.show_interaction_prompt(npc.rect.centerx, npc.rect.top - 20)
-                
-                if keys[pygame.K_e]:  # Interact key
-                    # Start interaction animation
-                    if hasattr(self.player, 'start_interaction'):
-                        self.player.start_interaction()
+            interaction_found = False
+            
+            for npc in npcs:
+                if not npc or not hasattr(npc, 'rect'):
+                    continue
                     
-                    # Play dialogue sound if available
-                    if hasattr(self.sound_manager, 'play_sound'):
-                        self.sound_manager.play_sound('dialogue')
+                # Check if player is close enough to interact (increased range)
+                distance = abs(self.player.rect.centerx - npc.rect.centerx)
+                vertical_distance = abs(self.player.rect.centery - npc.rect.centery)
+                
+                # More generous interaction range
+                if distance < 100 and vertical_distance < 60:  # Increased interaction range
+                    interaction_found = True
                     
-                    # Start dialogue
-                    print(f"🗣️  Interacting with {npc.npc_type}: {npc.dialogue_id}")
-                    self.dialogue_system.start_dialogue(npc.dialogue_id)
-                    self.state = GameState.DIALOGUE
-                    break
-        
-        # Clear interaction prompt if no NPCs nearby
-        if not interaction_found:
-            self.visual_feedback.clear_interaction_prompt()
+                    # Show interaction prompt
+                    npc.showing_prompt = True
+                    
+                    # Show NPC info in console
+                    if not hasattr(npc, 'info_shown'):
+                        print(f"💬 Near {npc.npc_type} at x={npc.rect.x}, y={npc.rect.y} - Press E to interact")
+                        print(f"📏 Distance: {distance} pixels (Moses at x={self.player.rect.x})")
+                        npc.info_shown = True
+                    
+                    if keys[pygame.K_e] and not getattr(npc, 'is_interacting', False):  # Interact key
+                        # Store reference to this NPC for removal after dialogue
+                        self.last_interacted_npc = npc
+                        
+                        # Start interaction
+                        npc.is_interacting = True
+                        
+                        # Start interaction animation
+                        if hasattr(self.player, 'start_interaction'):
+                            self.player.start_interaction()
+                        
+                        # Switch to dialogue state
+                        self.state = GameState.DIALOGUE
+                        
+                        # Start dialogue with enhanced system
+                        dialogue_success = self.dialogue_system.start_dialogue(npc.dialogue_id)
+                        if dialogue_success:
+                            print(f"✅ Started dialogue with {npc.npc_type}")
+                            # Play dialogue sound
+                            if hasattr(self.sound_manager, 'play_dialogue_sound'):
+                                self.sound_manager.play_dialogue_sound()
+                        else:
+                            print(f"❌ Failed to start dialogue with {npc.npc_type}")
+                            self.state = GameState.PLAYING  # Return to playing if dialogue fails
+                        
+                        break
+                else:
+                    # Reset info and prompt when moving away
+                    if hasattr(npc, 'info_shown'):
+                        npc.info_shown = False
+                    if hasattr(npc, 'showing_prompt'):
+                        npc.showing_prompt = False
+            
+            # Clear all interaction prompts if no NPCs are nearby
+            if not interaction_found:
+                if hasattr(self, 'visual_feedback'):
+                    self.visual_feedback.clear_interaction_prompt()
+        except Exception as e:
+            print(f"⚠️  Interaction check error: {e}")
     
     def start_dialogue(self, npc):
         """Start dialogue with an NPC"""
@@ -591,7 +767,7 @@ class MosesAdventureGame:
             self.render_game()
             
             if self.state == GameState.DIALOGUE:
-                self.dialogue_system.render(self.screen)
+                self.dialogue_system.render(self.screen, self.sprites)
             elif self.state == GameState.INVENTORY:
                 self.inventory.render(self.screen, self.sprites.get('ui', {}))
             elif self.state == GameState.PAUSED:
