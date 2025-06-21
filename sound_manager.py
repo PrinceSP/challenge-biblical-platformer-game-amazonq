@@ -73,6 +73,10 @@ class SoundManager:
         self.is_walking_continuously = False
         self.walking_channel = None
         self.typing_channel = None
+        
+        # Walking sound timing control
+        self.walking_timer = 0
+        self.walking_interval = 0.4  # Seconds between each step sound (slower = more realistic)
     
     def play_single_step(self):
         """Play single step sound for one key press"""
@@ -80,27 +84,39 @@ class SoundManager:
         print("🦶 Single step sound")
     
     def start_continuous_walking(self):
-        """Start continuous walking sound by looping single_step.wav"""
-        if not self.is_walking_continuously and 'single_step' in self.sounds and self.sounds['single_step']:
-            try:
-                # Stop any existing walking sound
-                self.stop_movement_sounds()
+        """Start continuous walking sound with realistic timing"""
+        if not self.is_walking_continuously:
+            self.is_walking_continuously = True
+            self.walking_timer = 0  # Reset timer
+            print("🚶 Started realistic continuous walking (timed single_step.wav)")
+    
+    def update_walking_sound(self, dt):
+        """Update walking sound with realistic timing - call this from game loop"""
+        if self.is_walking_continuously and self.sound_enabled:
+            self.walking_timer += dt
+            
+            # Play step sound at regular intervals
+            if self.walking_timer >= self.walking_interval:
+                if 'single_step' in self.sounds and self.sounds['single_step']:
+                    # Play single step with slightly lower volume for continuous walking
+                    original_volume = self.sounds['single_step'].get_volume()
+                    self.sounds['single_step'].set_volume(original_volume * 0.8)  # 80% volume
+                    self.sounds['single_step'].play()
+                    self.sounds['single_step'].set_volume(original_volume)  # Restore volume
                 
-                # Start looping single_step.wav on a dedicated channel
-                self.walking_channel = self.sounds['single_step'].play(-1)  # Loop single step indefinitely
-                self.is_walking_continuously = True
-                print("🚶 Started continuous walking (looping single_step.wav)")
-            except pygame.error as e:
-                print(f"❌ Error starting walking sound: {e}")
+                self.walking_timer = 0  # Reset timer for next step
     
     def stop_movement_sounds(self):
         """Stop all movement sounds"""
-        if self.walking_channel:
-            self.walking_channel.stop()
-            self.walking_channel = None
-        
         self.is_walking_continuously = False
+        self.walking_timer = 0
         print("🛑 Stopped movement sounds")
+    
+    def set_walking_speed(self, speed_factor=1.0):
+        """Adjust walking sound speed (1.0 = normal, 0.5 = slower, 2.0 = faster)"""
+        base_interval = 0.4  # Base interval in seconds
+        self.walking_interval = base_interval / speed_factor
+        print(f"🚶 Walking sound speed set to {speed_factor}x (interval: {self.walking_interval:.2f}s)")
     
     def play_typing_sound_loop(self):
         """Start looping typing sound for dialogue"""
