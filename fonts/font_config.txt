@@ -1,0 +1,19 @@
+# Font Configuration for Moses Adventure
+# This file specifies which system fonts to use for pixel-style rendering
+
+[fonts]
+# Primary font (monospace for pixel feel)
+primary = courier
+fallback = default
+
+[sizes]
+tiny = 14
+small = 18
+medium = 24
+large = 36
+
+[style]
+# Use monospace fonts for consistent character width
+use_monospace = true
+# Disable anti-aliasing for pixel-perfect rendering
+antialias = false

@@ -126,8 +126,6 @@ class MosesAdventureGame:
         print("- Number Keys (1-9): Use items from inventory")
         print("- H: Apply healing (after using healing items)")
         print("- A: Throw stone (when stone is ready)")
-        print("- W: Shoot staff projectile (when staff is active)")
-        print("- W: Shoot staff projectile (when staff is active)")
         print("- M: Toggle Music")
         print("- S: Toggle Sound Effects")
         print("- ESC: Pause/Menu")
@@ -135,156 +133,6 @@ class MosesAdventureGame:
         print("- F11: Toggle Fullscreen")
         print("- Ctrl+1/2/3: Walking pace (Slow/Normal/Fast)")
         
-    def initialize_multi_level_world(self):
-        """Initialize the multi-level platform world"""
-        print("🏗️  Creating multi-level platform world...")
-        
-        # Create platform system with proper spacing and collision detection
-        # Based on original dark platforms but with better spacing to avoid overlaps
-        self.game_platforms = [
-            # Base level - aligned with original dark platforms (y=580-620) - Above ground
-            {'x': 300, 'y': 580, 'width': 120, 'height': 20},  # Original x=300 position
-            {'x': 550, 'y': 590, 'width': 110, 'height': 20},  # 250px spacing
-            {'x': 800, 'y': 585, 'width': 120, 'height': 20},  # 250px spacing
-            {'x': 1050, 'y': 595, 'width': 110, 'height': 20}, # 250px spacing
-            {'x': 1300, 'y': 580, 'width': 120, 'height': 20}, # 250px spacing
-            {'x': 1550, 'y': 590, 'width': 110, 'height': 20}, # 250px spacing
-            {'x': 1800, 'y': 585, 'width': 120, 'height': 20}, # 250px spacing
-            {'x': 2050, 'y': 595, 'width': 110, 'height': 20}, # 250px spacing
-            
-            # Level 1 - First elevated platforms (y=450-490) - 120px above base level
-            {'x': 200, 'y': 460, 'width': 100, 'height': 20},  # Offset for variety
-            {'x': 450, 'y': 470, 'width': 95, 'height': 20},   # Original y=470 position
-            {'x': 700, 'y': 465, 'width': 100, 'height': 20},  # Original y=470 area
-            {'x': 950, 'y': 475, 'width': 95, 'height': 20},   # 250px spacing
-            {'x': 1200, 'y': 460, 'width': 100, 'height': 20}, # 250px spacing
-            {'x': 1450, 'y': 470, 'width': 95, 'height': 20},  # 250px spacing
-            {'x': 1700, 'y': 465, 'width': 100, 'height': 20}, # 250px spacing
-            {'x': 1950, 'y': 475, 'width': 95, 'height': 20},  # 250px spacing
-            
-            # Level 2 - Second elevated platforms (y=330-370) - 120px above Level 1
-            {'x': 150, 'y': 340, 'width': 85, 'height': 20},   # Offset for variety
-            {'x': 400, 'y': 350, 'width': 90, 'height': 20},   # 250px spacing
-            {'x': 650, 'y': 345, 'width': 85, 'height': 20},   # 250px spacing
-            {'x': 900, 'y': 355, 'width': 90, 'height': 20},   # 250px spacing
-            {'x': 1150, 'y': 340, 'width': 85, 'height': 20},  # 250px spacing
-            {'x': 1400, 'y': 350, 'width': 90, 'height': 20},  # 250px spacing
-            {'x': 1650, 'y': 345, 'width': 85, 'height': 20},  # 250px spacing
-            {'x': 1900, 'y': 355, 'width': 90, 'height': 20},  # 250px spacing
-            
-            # Level 3 - Third elevated platforms (y=210-250) - 120px above Level 2
-            {'x': 250, 'y': 220, 'width': 75, 'height': 20},   # Offset for variety
-            {'x': 500, 'y': 230, 'width': 80, 'height': 20},   # 250px spacing
-            {'x': 750, 'y': 225, 'width': 75, 'height': 20},   # 250px spacing
-            {'x': 1000, 'y': 235, 'width': 80, 'height': 20},  # 250px spacing
-            {'x': 1250, 'y': 220, 'width': 75, 'height': 20},  # 250px spacing
-            {'x': 1500, 'y': 230, 'width': 80, 'height': 20},  # 250px spacing
-            {'x': 1750, 'y': 225, 'width': 75, 'height': 20},  # 250px spacing
-            {'x': 2000, 'y': 235, 'width': 80, 'height': 20},  # 250px spacing
-            
-            # Level 4 - Top platforms (y=90-130) - 120px above Level 3
-            {'x': 350, 'y': 100, 'width': 70, 'height': 20},   # Offset for variety
-            {'x': 600, 'y': 110, 'width': 75, 'height': 20},   # 250px spacing
-            {'x': 850, 'y': 105, 'width': 70, 'height': 20},   # 250px spacing
-            {'x': 1100, 'y': 115, 'width': 75, 'height': 20},  # 250px spacing
-            {'x': 1350, 'y': 100, 'width': 70, 'height': 20},  # 250px spacing
-            {'x': 1600, 'y': 110, 'width': 75, 'height': 20},  # 250px spacing
-            {'x': 1850, 'y': 105, 'width': 70, 'height': 20},  # 250px spacing
-        ]
-        
-        # Create strategic items on platforms (positioned on platform centers)
-        self.game_items = [
-            # Ground level items (y=600-650)
-            {'x': 250, 'y': 600, 'type': 'stone'},      # On platform at x=200
-            {'x': 460, 'y': 610, 'type': 'water'},      # On platform at x=400
-            {'x': 700, 'y': 605, 'type': 'bread'},      # On platform at x=650
-            {'x': 955, 'y': 615, 'type': 'scroll'},     # On platform at x=900
-            {'x': 1200, 'y': 600, 'type': 'meat'},      # On platform at x=1150
-            {'x': 1460, 'y': 620, 'type': 'armor_of_god'}, # On platform at x=1400
-            {'x': 1700, 'y': 605, 'type': 'staff'},     # On platform at x=1650
-            
-            # Level 1 items (y=520-570)
-            {'x': 195, 'y': 520, 'type': 'stone'},      # On platform at x=150
-            {'x': 400, 'y': 530, 'type': 'water'},      # On platform at x=350
-            {'x': 595, 'y': 510, 'type': 'bread'},      # On platform at x=550
-            {'x': 800, 'y': 540, 'type': 'scroll'},     # On platform at x=750
-            {'x': 995, 'y': 520, 'type': 'meat'},       # On platform at x=950
-            {'x': 1250, 'y': 535, 'type': 'armor_of_god'}, # On platform at x=1200
-            
-            # Level 2 items (y=440-490)
-            {'x': 140, 'y': 440, 'type': 'water'},      # On platform at x=100
-            {'x': 345, 'y': 450, 'type': 'bread'},      # On platform at x=300
-            {'x': 542, 'y': 430, 'type': 'scroll'},     # On platform at x=500
-            {'x': 745, 'y': 460, 'type': 'meat'},       # On platform at x=700
-            {'x': 940, 'y': 440, 'type': 'armor_of_god'}, # On platform at x=900
-            {'x': 1145, 'y': 455, 'type': 'staff'},     # On platform at x=1100
-            
-            # Level 3 items (y=360-410)
-            {'x': 287, 'y': 360, 'type': 'scroll'},     # On platform at x=250
-            {'x': 490, 'y': 370, 'type': 'meat'},       # On platform at x=450
-            {'x': 687, 'y': 350, 'type': 'armor_of_god'}, # On platform at x=650
-            {'x': 890, 'y': 380, 'type': 'staff'},      # On platform at x=850
-            {'x': 1087, 'y': 360, 'type': 'stone'},     # On platform at x=1050
-            
-            # Level 4 items (y=280-330)
-            {'x': 235, 'y': 280, 'type': 'meat'},       # On platform at x=200
-            {'x': 437, 'y': 290, 'type': 'armor_of_god'}, # On platform at x=400
-            {'x': 635, 'y': 270, 'type': 'staff'},      # On platform at x=600
-            {'x': 837, 'y': 300, 'type': 'stone'},      # On platform at x=800
-            
-            # Level 5 items (y=200-250) - Premium rewards
-            {'x': 182, 'y': 200, 'type': 'armor_of_god'}, # On platform at x=150
-            {'x': 385, 'y': 210, 'type': 'staff'},      # On platform at x=350
-            {'x': 582, 'y': 190, 'type': 'meat'},       # On platform at x=550
-            {'x': 785, 'y': 220, 'type': 'scroll'},     # On platform at x=750
-        ]
-        
-        # Create NPCs and enemies on platforms
-        self.game_npcs = [
-            # Ground NPCs
-            {'x': 320, 'y': 550, 'type': 'hebrew_slave'},
-            {'x': 720, 'y': 560, 'type': 'egyptian_citizen'},
-            {'x': 1120, 'y': 575, 'type': 'priest'},
-            {'x': 1720, 'y': 540, 'type': 'palace_guard'},
-            
-            # Platform NPCs
-            {'x': 470, 'y': 460, 'type': 'egyptian_citizen'},
-            {'x': 870, 'y': 470, 'type': 'hebrew_slave'},
-            {'x': 1270, 'y': 465, 'type': 'priest'},
-            {'x': 420, 'y': 360, 'type': 'priest'},
-            {'x': 820, 'y': 370, 'type': 'hebrew_slave'},
-            {'x': 570, 'y': 250, 'type': 'priest'},
-            {'x': 970, 'y': 240, 'type': 'palace_guard'},
-        ]
-        
-        self.game_enemies = [
-            # Ground enemies
-            {'x': 600, 'y': 640, 'type': 'egyptian_soldier'},
-            {'x': 1000, 'y': 620, 'type': 'egyptian_soldier'},
-            {'x': 1400, 'y': 640, 'type': 'egyptian_soldier'},
-            {'x': 1800, 'y': 640, 'type': 'egyptian_soldier'},
-            
-            # Platform enemies
-            {'x': 540, 'y': 570, 'type': 'egyptian_soldier'},
-            {'x': 940, 'y': 588, 'type': 'egyptian_soldier'},
-            {'x': 290, 'y': 450, 'type': 'egyptian_soldier'},
-            {'x': 690, 'y': 440, 'type': 'egyptian_soldier'},
-            {'x': 1090, 'y': 450, 'type': 'egyptian_soldier'},
-            {'x': 240, 'y': 350, 'type': 'egyptian_soldier'},
-            {'x': 640, 'y': 340, 'type': 'egyptian_soldier'},
-            {'x': 1040, 'y': 350, 'type': 'egyptian_soldier'},
-            {'x': 390, 'y': 260, 'type': 'egyptian_soldier'},
-            {'x': 790, 'y': 270, 'type': 'egyptian_soldier'},
-            {'x': 1190, 'y': 265, 'type': 'egyptian_soldier'},
-        ]
-        
-        print(f"✅ Created {len(self.game_platforms)} platforms across 4 levels")
-        print(f"✅ Created {len(self.game_items)} strategic items")
-        print(f"✅ Created {len(self.game_npcs)} NPCs and {len(self.game_enemies)} enemies")
-        
-        return True
-
-
     def load_sprites(self):
         """Load all game sprites including NPCs and tiles for enhanced UI"""
         sprites = {}
@@ -600,37 +448,6 @@ class MosesAdventureGame:
                 self.apply_healing()
                 return
             
-            # Handle staff shooting - COMPREHENSIVE DEBUG VERSION
-            if event.key == pygame.K_w:
-                print("🎯 W KEY PRESSED!")
-                if self.player:
-                    print(f"🎯 Player exists: {self.player is not None}")
-                    if hasattr(self.player, 'staff_active'):
-                        print(f"🎯 Staff active: {self.player.staff_active}")
-                        if self.player.staff_active:
-                            print("🎯 Attempting to shoot staff projectile...")
-                            success = self.player.shoot_staff_projectile()
-                            print(f"🎯 Shoot success: {success}")
-                            if success:
-                                # Play staff sound if available
-                                if hasattr(self.sound_manager, 'play_sound'):
-                                    self.sound_manager.play_sound('jump')
-                                # Visual feedback
-                                if hasattr(self.visual_feedback, 'show_message'):
-                                    self.visual_feedback.show_message("⚡ Divine Energy!", 1.0)
-                                print("🎯 Staff projectile should be created and visible!")
-                            else:
-                                print("❌ Failed to shoot staff projectile")
-                        else:
-                            print("❌ Staff not active! Use staff from inventory first.")
-                            if hasattr(self.visual_feedback, 'show_message'):
-                                self.visual_feedback.show_message("Staff not active!", 1.5)
-                    else:
-                        print("❌ Player has no staff_active attribute")
-                else:
-                    print("❌ No player found")
-                return
-            
             if event.key == pygame.K_i:
                 self.inventory.active = True
                 self.state = GameState.INVENTORY
@@ -685,27 +502,20 @@ class MosesAdventureGame:
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_SPACE:
                 # Restart the game
-                print("🔄 Restarting Moses' journey...")
+                print("🔄 Restarting game...")
                 self.restart_game()
-                # Play restart sound if available
-                if hasattr(self.sound_manager, 'play_sound'):
-                    self.sound_manager.play_sound('menu_select')
             elif event.key == pygame.K_r:
                 # Alternative restart key
-                print("🔄 Restarting Moses' journey...")
+                print("🔄 Restarting game...")
                 self.restart_game()
-                if hasattr(self.sound_manager, 'play_sound'):
-                    self.sound_manager.play_sound('menu_select')
             elif event.key == pygame.K_ESCAPE:
                 # Return to main menu
                 print("📋 Returning to main menu...")
                 self.state = GameState.MENU
                 self.player = None
-                if hasattr(self.sound_manager, 'play_sound'):
-                    self.sound_manager.play_sound('menu_select')
             elif event.key == pygame.K_q:
                 # Quit game
-                print("👋 Farewell, Moses...")
+                print("👋 Quitting game...")
                 self.running = False
     
     def restart_game(self):
@@ -714,10 +524,6 @@ class MosesAdventureGame:
         ground_y = SCREEN_HEIGHT - 50
         player_y = ground_y - 48
         self.player = Player(150, player_y, self.sprites.get('player', {}))
-        
-        # Give player access to platforms for collision detection
-        if hasattr(self, 'game_platforms'):
-            self.player.game_platforms = self.game_platforms
         
         # Reset player health to full
         self.player.health = self.player.max_health
@@ -734,20 +540,6 @@ class MosesAdventureGame:
         
         # Reload the current level
         self.level_manager.load_level(Location.PALACE, self.sprites)
-        
-        # Initialize multi-level platform system
-        print("🏗️  Initializing multi-level platform system...")
-        self.initialize_multi_level_world()
-        
-        # Platform integration handled by render_platforms method
-        print(f"🏗️  Platform system ready with {len(self.game_platforms)} platforms")
-        
-        # Initialize multi-level platform system
-        print("🏗️  Initializing multi-level platform system...")
-        self.initialize_multi_level_world()
-        
-        # Platform integration handled by render_platforms method
-        print(f"🏗️  Platform system ready with {len(self.game_platforms)} platforms")
         
         # Reset camera
         self.camera = Camera()
@@ -768,10 +560,6 @@ class MosesAdventureGame:
         player_y = ground_y - 48  # 670 (player height is 48)
         self.player = Player(150, player_y, self.sprites.get('player', {}))
         
-        # Give player access to platforms for collision detection
-        if hasattr(self, 'game_platforms'):
-            self.player.game_platforms = self.game_platforms
-        
         # Debug: Show Moses' exact position
         print(f"🎯 Moses Position: x={self.player.rect.x}, y={self.player.rect.y}, bottom={self.player.rect.bottom}")
         
@@ -787,20 +575,6 @@ class MosesAdventureGame:
         self.sound_manager.set_step_volume(0.5)  # 50% volume for comfortable listening
         
         self.level_manager.load_level(Location.PALACE, self.sprites)
-        
-        # Initialize multi-level platform system
-        print("🏗️  Initializing multi-level platform system...")
-        self.initialize_multi_level_world()
-        
-        # Platform integration handled by render_platforms method
-        print(f"🏗️  Platform system ready with {len(self.game_platforms)} platforms")
-        
-        # Initialize multi-level platform system
-        print("🏗️  Initializing multi-level platform system...")
-        self.initialize_multi_level_world()
-        
-        # Platform integration handled by render_platforms method
-        print(f"🏗️  Platform system ready with {len(self.game_platforms)} platforms")
         
         # Reset camera to show the game world properly
         self.camera.x = 0
@@ -868,12 +642,12 @@ class MosesAdventureGame:
             self.dialogue_system.update(dt)
     
     def check_collisions(self):
-        """Check for collisions with FIXED physics effects"""
+        """Check for collisions with realistic physics effects"""
         if not self.player:
             return
         
         try:
-            # Platform collisions with FIXED physics
+            # Platform collisions with realistic physics
             platforms = self.level_manager.get_platforms()
             
             # Debug: Show platform count
@@ -881,26 +655,6 @@ class MosesAdventureGame:
                 print(f"🏗️  Loaded {len(platforms)} platforms for collision detection")
                 self._platform_debug_shown = True
             
-            # FIXED: Check if player needs platform support after horizontal movement
-            if hasattr(self.player, 'needs_platform_check') and self.player.needs_platform_check:
-                self.player.needs_platform_check = False
-                # Check if player is still on any platform
-                on_platform = False
-                for platform in platforms:
-                    if platform and hasattr(platform, 'rect'):
-                        # Check if player's bottom is close to platform top and overlapping horizontally
-                        if (abs(self.player.rect.bottom - platform.rect.top) <= 5 and
-                            self.player.rect.right > platform.rect.left and
-                            self.player.rect.left < platform.rect.right):
-                            on_platform = True
-                            break
-                
-                # If not on any platform, start falling
-                if not on_platform:
-                    self.player.on_ground = False
-                    print("🪂 Moses walked off platform - starting to fall")
-            
-            # Regular collision detection
             for platform in platforms:
                 if platform and hasattr(platform, 'rect') and self.player.rect.colliderect(platform.rect):
                     self.handle_platform_collision(platform)
@@ -924,57 +678,11 @@ class MosesAdventureGame:
             elif collision_result == 'damage_taken':
                 # Player took damage but is still alive
                 pass
-        
-            
-            # Staff projectile collisions
-            if hasattr(self.player, 'staff_projectiles'):
-                for projectile in self.player.staff_projectiles[:]:
-                    # Check collision with enemies
-                    enemies = self.level_manager.get_enemies()
-                    for enemy in enemies:
-                        if enemy and hasattr(enemy, 'rect') and projectile.rect.colliderect(enemy.rect):
-                            # Staff hit enemy
-                            if hasattr(enemy, 'health'):
-                                enemy.health -= projectile.damage
-                                if enemy.health <= 0:
-                                    enemy.defeated = True
-                            elif hasattr(enemy, 'defeated'):
-                                enemy.defeated = True
-                            
-                            # Remove projectile
-                            projectile.active = False
-                            
-                            # Visual and audio feedback
-                            if hasattr(self.visual_feedback, 'create_dust_effect'):
-                                self.visual_feedback.create_dust_effect(enemy.rect.centerx, enemy.rect.centery)
-                            if hasattr(self.sound_manager, 'play_sound'):
-                                self.sound_manager.play_sound('enemy_defeat')
-                            
-                            print(f"⚡ Staff projectile hit enemy for {projectile.damage} damage!")
-                            break
-                    
-                    # Check collision with simple enemies
-                    simple_enemies = self.level_manager.get_simple_enemies()
-                    for enemy in simple_enemies:
-                        if enemy and not enemy['defeated'] and projectile.rect.colliderect(enemy['rect']):
-                            # Staff hit simple enemy
-                            enemy['defeated'] = True
-                            projectile.active = False
-                            
-                            # Visual and audio feedback
-                            if hasattr(self.visual_feedback, 'create_dust_effect'):
-                                self.visual_feedback.create_dust_effect(enemy['rect'].centerx, enemy['rect'].centery)
-                            if hasattr(self.sound_manager, 'play_sound'):
-                                self.sound_manager.play_sound('enemy_defeat')
-                            
-                            print(f"⚡ Staff projectile defeated simple enemy!")
-                            break
-        
         except Exception as e:
             print(f"⚠️  Collision check error: {e}")
     
     def handle_platform_collision(self, platform):
-        """Handle collision with platforms with FIXED physics"""
+        """Handle collision with platforms with realistic physics"""
         if not self.player or not platform:
             return
             
@@ -987,9 +695,9 @@ class MosesAdventureGame:
             overlap_y = min(player.rect.bottom - platform.rect.top, 
                            platform.rect.bottom - player.rect.top)
             
-            # FIXED: Better platform landing detection
-            if abs(player.rect.bottom - platform.rect.top) <= 5 and player.velocity_y >= 0:
-                # Player is landing on or standing on platform
+            # Add tolerance for ground-level collision
+            if abs(player.rect.bottom - platform.rect.top) <= 3:
+                # Player is standing on platform (with tolerance)
                 player.rect.bottom = platform.rect.top
                 if hasattr(player, 'velocity_y'):
                     player.velocity_y = 0
@@ -997,11 +705,6 @@ class MosesAdventureGame:
                     player.on_ground = True
                 if hasattr(player, 'is_jumping'):
                     player.is_jumping = False
-                
-                # Clear the platform check flag if it exists
-                if hasattr(player, 'needs_platform_check'):
-                    player.needs_platform_check = False
-                
                 # Create dust effect
                 if hasattr(self, 'visual_feedback'):
                     self.visual_feedback.create_dust_effect(player.rect.centerx, player.rect.bottom)
@@ -1030,11 +733,6 @@ class MosesAdventureGame:
                         player.on_ground = True
                     if hasattr(player, 'is_jumping'):
                         player.is_jumping = False
-                    
-                    # Clear the platform check flag if it exists
-                    if hasattr(player, 'needs_platform_check'):
-                        player.needs_platform_check = False
-                    
                     # Create dust effect
                     if hasattr(self, 'visual_feedback'):
                         self.visual_feedback.create_dust_effect(player.rect.centerx, player.rect.bottom)
@@ -1406,31 +1104,7 @@ class MosesAdventureGame:
         if self.scripture_dialogue_active:
             self.render_scripture_dialogue()
         
-        
-        
-        # Show staff status
-        if self.player and hasattr(self.player, 'staff_active') and self.player.staff_active:
-            staff_time = self.player.get_staff_time_remaining()
-            minutes = int(staff_time // 60)
-            seconds = int(staff_time % 60)
-            staff_text = self.font_manager.render_text(f"Staff Active: {minutes}:{seconds:02d}", 'small', GOLD)
-            self.screen.blit(staff_text, (10, 120))
-            
-            # Staff usage hint
-            hint_text = self.font_manager.render_text("Press W to shoot divine energy!", 'tiny', WHITE)
-            self.screen.blit(hint_text, (10, 140))
-        
-        # Show staff status
-        if self.player and hasattr(self.player, 'staff_active') and self.player.staff_active:
-            staff_time = self.player.get_staff_time_remaining()
-            minutes = int(staff_time // 60)
-            seconds = int(staff_time % 60)
-            staff_text = self.font_manager.render_text(f"Staff Active: {minutes}:{seconds:02d}", 'small', GOLD)
-            self.screen.blit(staff_text, (10, 120))
-            
-            # Staff usage hint
-            hint_text = self.font_manager.render_text("Press W to shoot divine energy!", 'tiny', WHITE)
-            self.screen.blit(hint_text, (10, 140))# Show stone throw mode indicator
+        # Show stone throw mode indicator
         if self.stone_throw_mode:
             stone_text = self.font_manager.render_text("🎯 STONE READY - Click on enemy to throw!", 'medium', GOLD)
             stone_rect = stone_text.get_rect(center=(SCREEN_WIDTH//2, 50))
@@ -1496,20 +1170,6 @@ class MosesAdventureGame:
             y_offset += 30
     
     def render_game(self):
-        # Render multi-level platforms
-        if hasattr(self, 'platforms'):
-            for platform in self.platforms:
-                platform_rect = pygame.Rect(platform['x'], platform['y'], platform['width'], platform['height'])
-                pygame.draw.rect(self.screen, (128, 128, 128), platform_rect)  # Gray platforms
-                pygame.draw.rect(self.screen, (100, 100, 100), platform_rect, 2)  # Dark border
-
-        # Render multi-level platforms
-        if hasattr(self, 'platforms'):
-            for platform in self.platforms:
-                platform_rect = pygame.Rect(platform['x'], platform['y'], platform['width'], platform['height'])
-                pygame.draw.rect(self.screen, (128, 128, 128), platform_rect)  # Gray platforms
-                pygame.draw.rect(self.screen, (100, 100, 100), platform_rect, 2)  # Dark border
-
         """Render the main game with proper background"""
         # Clear screen first
         self.screen.fill(BLACK)
@@ -1522,17 +1182,10 @@ class MosesAdventureGame:
         
         # Render level elements (platforms, items, NPCs)
         self.level_manager.render(self.screen, camera_offset)
-
-        # Render multi-level platforms
-        self.render_platforms(camera_offset)
-                
+        
         # Render player on top
         if self.player:
             self.player.render(self.screen, camera_offset)
-            
-            # Render staff projectiles
-            if hasattr(self.player, 'render_staff_projectiles'):
-                self.player.render_staff_projectiles(self.screen, camera_offset)
         
         # Render UI on top of everything
         self.render_ui()
@@ -1579,20 +1232,20 @@ class MosesAdventureGame:
                     self.screen.blit(healing_bg, (115, 38))
             else:
                 # Inventory instructions
-                inventory_text = self.font_manager.render_text("Press I for inventory, use number keys for items", 'tiny', (240, 240, 240))
-                self.screen.blit(inventory_text, (10, 115))
+                inventory_text = self.font_manager.render_text("Press I for inventory, use number keys for items", 'tiny', (200, 200, 200))
+                self.screen.blit(inventory_text, (120, 40))
             
             # Debug: Show player position and movement limits
-            # pos_text = self.font_manager.render_text(f"Moses: X={self.player.rect.x}, Y={self.player.rect.y}", 'tiny', WHITE)
-            # self.screen.blit(pos_text, (10, 90))
+            pos_text = self.font_manager.render_text(f"Moses: X={self.player.rect.x}, Y={self.player.rect.y}", 'tiny', WHITE)
+            self.screen.blit(pos_text, (10, 90))
             
-            # limit_text = self.font_manager.render_text(f"Movement Limit: {SCREEN_WIDTH * 5} pixels", 'tiny', WHITE)
-            # self.screen.blit(limit_text, (10, 110))
+            limit_text = self.font_manager.render_text(f"Movement Limit: {SCREEN_WIDTH * 5} pixels", 'tiny', WHITE)
+            self.screen.blit(limit_text, (10, 110))
         
         # Current location
-        # location_name = self.level_manager.current_location.value.replace('_', ' ').title()
-        # location_text = self.font_manager.render_text(f"Location: {location_name}", 'small', WHITE)
-        # self.screen.blit(location_text, (10, 40))
+        location_name = self.level_manager.current_location.value.replace('_', ' ').title()
+        location_text = self.font_manager.render_text(f"Location: {location_name}", 'small', WHITE)
+        self.screen.blit(location_text, (10, 40))
         
         # Moral standing
         moral_standing = self.moral_system.get_moral_standing()
@@ -1605,8 +1258,8 @@ class MosesAdventureGame:
         self.screen.blit(instruction_text, (10, SCREEN_HEIGHT - 30))
         
         # Game state indicator
-        # state_text = self.font_manager.render_text(f"State: {self.state.value}", 'tiny', GREEN)
-        # self.screen.blit(state_text, (10, 115))
+        state_text = self.font_manager.render_text(f"State: {self.state.value}", 'tiny', GREEN)
+        self.screen.blit(state_text, (10, 115))
         
         # Audio status
         audio_status = []
@@ -1737,78 +1390,20 @@ class MosesAdventureGame:
         close_text = self.font_manager.render_text("Press any key to close", 'tiny', GRAY)
         close_rect = close_text.get_rect(center=(SCREEN_WIDTH//2, box_y + box_height - 20))
         self.screen.blit(close_text, close_rect)
-    
-    def render_game_over_screen(self):
-        """Render game over screen with dialog options"""
-        # Semi-transparent red overlay
+        """Render game over screen"""
         overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
-        overlay.set_alpha(180)
+        overlay.set_alpha(128)
         overlay.fill(RED)
         self.screen.blit(overlay, (0, 0))
         
-        # Game over dialog box
-        dialog_width = 500
-        dialog_height = 300
-        dialog_x = (SCREEN_WIDTH - dialog_width) // 2
-        dialog_y = (SCREEN_HEIGHT - dialog_height) // 2
-        
-        # Dialog background
-        dialog_surface = pygame.Surface((dialog_width, dialog_height))
-        dialog_surface.fill(BLACK)
-        pygame.draw.rect(dialog_surface, WHITE, dialog_surface.get_rect(), 3)
-        self.screen.blit(dialog_surface, (dialog_x, dialog_y))
-        
-        # Game over title
-        game_over_text = self.font_manager.render_text("Moses Has Fallen!", 'large', RED)
-        game_over_rect = game_over_text.get_rect(center=(SCREEN_WIDTH//2, dialog_y + 60))
+        # Game over text with custom font
+        game_over_text = self.font_manager.render_text("Game Over", 'large', WHITE)
+        game_over_rect = game_over_text.get_rect(center=(SCREEN_WIDTH//2, SCREEN_HEIGHT//2))
         self.screen.blit(game_over_text, game_over_rect)
         
-        # Subtitle
-        subtitle_text = self.font_manager.render_text("The journey ends here...", 'medium', WHITE)
-        subtitle_rect = subtitle_text.get_rect(center=(SCREEN_WIDTH//2, dialog_y + 100))
-        self.screen.blit(subtitle_text, subtitle_rect)
-        
-        # Options
-        restart_text = self.font_manager.render_text("Press SPACE to Restart Journey", 'medium', GOLD)
-        restart_rect = restart_text.get_rect(center=(SCREEN_WIDTH//2, dialog_y + 160))
+        restart_text = self.font_manager.render_text("Press SPACE to restart or ESC to quit", 'medium', WHITE)
+        restart_rect = restart_text.get_rect(center=(SCREEN_WIDTH//2, SCREEN_HEIGHT//2 + 100))
         self.screen.blit(restart_text, restart_rect)
-        
-        menu_text = self.font_manager.render_text("Press ESC to Return to Main Menu", 'medium', LIGHT_GRAY)
-        menu_rect = menu_text.get_rect(center=(SCREEN_WIDTH//2, dialog_y + 190))
-        self.screen.blit(menu_text, menu_rect)
-        
-        quit_text = self.font_manager.render_text("Press Q to Quit Game", 'small', GRAY)
-        quit_rect = quit_text.get_rect(center=(SCREEN_WIDTH//2, dialog_y + 230))
-        self.screen.blit(quit_text, quit_rect)
-
-
-    def render_platforms(self, camera_offset):
-        """Render all platforms with consistent colors matching original dark platforms"""
-        if not hasattr(self, 'game_platforms'):
-            return
-        
-        import pygame
-        
-        for platform in self.game_platforms:
-            # Calculate screen position
-            screen_x = platform['x'] - camera_offset[0]
-            screen_y = platform['y'] - camera_offset[1]
-            
-            # Only render platforms that are visible on screen
-            if -50 <= screen_x <= SCREEN_WIDTH + 50 and -50 <= screen_y <= SCREEN_HEIGHT + 50:
-                # Create platform rectangle
-                platform_rect = pygame.Rect(screen_x, screen_y, platform['width'], platform['height'])
-                
-                # Draw platform with consistent brown stone color (matching original dark platforms)
-                pygame.draw.rect(self.screen, (139, 69, 19), platform_rect)    # Brown stone (same as original)
-                pygame.draw.rect(self.screen, (101, 67, 33), platform_rect, 3) # Dark brown border
-                pygame.draw.rect(self.screen, (160, 82, 45), (screen_x + 2, screen_y + 2, platform['width'] - 4, 4))  # Light brown highlight
-                
-                # Add subtle texture lines
-                for i in range(2, platform['width'] - 2, 8):
-                    pygame.draw.line(self.screen, (120, 60, 15), 
-                                   (screen_x + i, screen_y + 1), 
-                                   (screen_x + i, screen_y + platform['height'] - 1))
 
 def main():
     """Main function to run the game"""

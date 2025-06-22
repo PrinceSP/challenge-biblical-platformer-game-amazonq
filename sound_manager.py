@@ -79,9 +79,23 @@ class SoundManager:
         self.walking_interval = 0.4  # Seconds between each step sound (slower = more realistic)
     
     def play_single_step(self):
-        """Play single step sound for one key press"""
-        self.play_sound('single_step')
-        print("🦶 Single step sound")
+        """Play single step sound - optimized for realistic walking"""
+        if self.sound_enabled and 'single_step' in self.sounds and self.sounds['single_step']:
+            # Stop any currently playing step sound to prevent overlap
+            self.sounds['single_step'].stop()
+            
+            # Play the step sound with slightly reduced volume for comfort
+            self.sounds['single_step'].set_volume(0.6)  # 60% volume for realistic steps
+            self.sounds['single_step'].play()
+            
+            # Debug output (can be removed later)
+            # print("👟 Step sound played")
+    
+    def set_step_volume(self, volume=0.6):
+        """Set the volume for step sounds (0.0 to 1.0)"""
+        if 'single_step' in self.sounds and self.sounds['single_step']:
+            self.sounds['single_step'].set_volume(volume)
+            print(f"🔊 Step volume set to {volume:.1f}")
     
     def start_continuous_walking(self):
         """Start continuous walking sound with realistic timing"""

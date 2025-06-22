@@ -1,0 +1,18 @@
+# Pixel Font Configuration
+# This configuration optimizes system fonts for pixel-style rendering
+
+[font_settings]
+name = courier
+antialias = false
+pixel_perfect = true
+
+[sizes]
+tiny = 14
+small = 18  
+medium = 24
+large = 36
+
+[style]
+monospace = true
+bold = false
+italic = false
