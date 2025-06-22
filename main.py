@@ -1475,6 +1475,11 @@ class MosesAdventureGame:
         elif self.state in [GameState.PLAYING, GameState.DIALOGUE, GameState.INVENTORY, GameState.PAUSED]:
             self.render_game()
 
+            # Render NPC dialogue if active
+            if self.dialogue_system and self.dialogue_system.active:
+                self.dialogue_system.render(self.screen)
+                print("🎭 MAIN: Rendering NPC dialogue to screen")
+
             # Render dialogue system if active (for NPC interactions)
             if self.dialogue_system.active:
                 self.dialogue_system.render(self.screen)
