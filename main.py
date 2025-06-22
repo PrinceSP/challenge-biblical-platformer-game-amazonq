@@ -98,8 +98,8 @@ class MosesAdventureGame:
         self.visual_feedback = VisualFeedback()
         
         # Connect systems
-        self.dialogue_system.moral_system = self.moral_system
-        self.dialogue_system.set_sound_manager(self.sound_manager)  # Connect sound manager to dialogue
+        # self.dialogue_system.moral_system = self.moral_system
+        self.dialogue_system.set_sound_manager(self.sound_manager)
         
         # Load sprites
         self.sprites = self.load_sprites()
@@ -134,109 +134,100 @@ class MosesAdventureGame:
         print("- F1: Show FPS")
         print("- F11: Toggle Fullscreen")
         print("- Ctrl+1/2/3: Walking pace (Slow/Normal/Fast)")
+                # FPS Optimization Settings
+        self.target_fps = 60
+        self.clock = pygame.time.Clock()
+        self.frame_skip = 0  # Skip frames if needed
+        self.performance_mode = True
+        
+        # Reduce debug output for better performance
+        self.debug_collision = False
+        self.debug_camera = False
+        
+        print(f"🚀 Performance optimization enabled - Target FPS: {self.target_fps}")
+        # Enhanced visual feedback system for all messages
+        self.feedback_messages = []  # List of active feedback messages
+        self.feedback_duration = 1.5  # 1.5 seconds display time for all messages
+        
+        # Legacy support for consumption text
+        self.consumption_text = ""
+        self.consumption_text_timer = 0.0
+        self.consumption_text_duration = 1.5  # Updated to 1.5 seconds
+        
+        print("✅ Item consumption text timer system initialized")
         
     def initialize_multi_level_world(self):
         """Initialize the multi-level platform world"""
         print("🏗️  Creating multi-level platform world...")
         
-        # Create platform system with proper spacing and collision detection
-        # Based on original dark platforms but with better spacing to avoid overlaps
+                # Create platform system with MUCH MORE HEIGHT SPACING from old platforms
+        # Old platforms are around y=608-670, new platforms positioned MUCH HIGHER for clear separation
+        # 400px horizontal spacing, 160px+ vertical spacing between levels
         self.game_platforms = [
-            # Base level - aligned with original dark platforms (y=580-620) - Above ground
-            {'x': 300, 'y': 580, 'width': 120, 'height': 20},  # Original x=300 position
-            {'x': 550, 'y': 590, 'width': 110, 'height': 20},  # 250px spacing
-            {'x': 800, 'y': 585, 'width': 120, 'height': 20},  # 250px spacing
-            {'x': 1050, 'y': 595, 'width': 110, 'height': 20}, # 250px spacing
-            {'x': 1300, 'y': 580, 'width': 120, 'height': 20}, # 250px spacing
-            {'x': 1550, 'y': 590, 'width': 110, 'height': 20}, # 250px spacing
-            {'x': 1800, 'y': 585, 'width': 120, 'height': 20}, # 250px spacing
-            {'x': 2050, 'y': 595, 'width': 110, 'height': 20}, # 250px spacing
+            # Base level - MUCH HIGHER above old platforms (y=480-520) - 88-128px separation from old platforms
+            {'x': 400, 'y': 490, 'width': 120, 'height': 20},   # 400px spacing between platforms
+            {'x': 800, 'y': 500, 'width': 110, 'height': 20},   # 400px spacing - no overlap
+            {'x': 1200, 'y': 495, 'width': 120, 'height': 20},  # 400px spacing - clear separation
+            {'x': 1600, 'y': 505, 'width': 110, 'height': 20},  # 400px spacing - well spaced
+            {'x': 2000, 'y': 490, 'width': 120, 'height': 20},  # 400px spacing - good distance
+            {'x': 2400, 'y': 500, 'width': 110, 'height': 20},  # 400px spacing - final base platform
             
-            # Level 1 - First elevated platforms (y=450-490) - 120px above base level
-            {'x': 200, 'y': 460, 'width': 100, 'height': 20},  # Offset for variety
-            {'x': 450, 'y': 470, 'width': 95, 'height': 20},   # Original y=470 position
-            {'x': 700, 'y': 465, 'width': 100, 'height': 20},  # Original y=470 area
-            {'x': 950, 'y': 475, 'width': 95, 'height': 20},   # 250px spacing
-            {'x': 1200, 'y': 460, 'width': 100, 'height': 20}, # 250px spacing
-            {'x': 1450, 'y': 470, 'width': 95, 'height': 20},  # 250px spacing
-            {'x': 1700, 'y': 465, 'width': 100, 'height': 20}, # 250px spacing
-            {'x': 1950, 'y': 475, 'width': 95, 'height': 20},  # 250px spacing
+            # Level 1 - First elevated platforms (y=320-360) - 160px above base level
+            {'x': 300, 'y': 330, 'width': 100, 'height': 20},   # Offset start, 400px spacing
+            {'x': 700, 'y': 340, 'width': 95, 'height': 20},    # 400px spacing - good distance
+            {'x': 1100, 'y': 335, 'width': 100, 'height': 20},  # 400px spacing - clear separation
+            {'x': 1500, 'y': 345, 'width': 95, 'height': 20},   # 400px spacing - well spaced
+            {'x': 1900, 'y': 330, 'width': 100, 'height': 20},  # 400px spacing - good distance
+            {'x': 2300, 'y': 340, 'width': 95, 'height': 20},   # 400px spacing - final level 1
             
-            # Level 2 - Second elevated platforms (y=330-370) - 120px above Level 1
-            {'x': 150, 'y': 340, 'width': 85, 'height': 20},   # Offset for variety
-            {'x': 400, 'y': 350, 'width': 90, 'height': 20},   # 250px spacing
-            {'x': 650, 'y': 345, 'width': 85, 'height': 20},   # 250px spacing
-            {'x': 900, 'y': 355, 'width': 90, 'height': 20},   # 250px spacing
-            {'x': 1150, 'y': 340, 'width': 85, 'height': 20},  # 250px spacing
-            {'x': 1400, 'y': 350, 'width': 90, 'height': 20},  # 250px spacing
-            {'x': 1650, 'y': 345, 'width': 85, 'height': 20},  # 250px spacing
-            {'x': 1900, 'y': 355, 'width': 90, 'height': 20},  # 250px spacing
+            # Level 2 - Second elevated platforms (y=160-200) - 160px above Level 1
+            {'x': 200, 'y': 170, 'width': 85, 'height': 20},    # Offset start, 400px spacing
+            {'x': 600, 'y': 180, 'width': 90, 'height': 20},    # 400px spacing - good distance
+            {'x': 1000, 'y': 175, 'width': 85, 'height': 20},   # 400px spacing - clear separation
+            {'x': 1400, 'y': 185, 'width': 90, 'height': 20},   # 400px spacing - well spaced
+            {'x': 1800, 'y': 170, 'width': 85, 'height': 20},   # 400px spacing - good distance
+            {'x': 2200, 'y': 180, 'width': 90, 'height': 20},   # 400px spacing - final level 2
             
-            # Level 3 - Third elevated platforms (y=210-250) - 120px above Level 2
-            {'x': 250, 'y': 220, 'width': 75, 'height': 20},   # Offset for variety
-            {'x': 500, 'y': 230, 'width': 80, 'height': 20},   # 250px spacing
-            {'x': 750, 'y': 225, 'width': 75, 'height': 20},   # 250px spacing
-            {'x': 1000, 'y': 235, 'width': 80, 'height': 20},  # 250px spacing
-            {'x': 1250, 'y': 220, 'width': 75, 'height': 20},  # 250px spacing
-            {'x': 1500, 'y': 230, 'width': 80, 'height': 20},  # 250px spacing
-            {'x': 1750, 'y': 225, 'width': 75, 'height': 20},  # 250px spacing
-            {'x': 2000, 'y': 235, 'width': 80, 'height': 20},  # 250px spacing
-            
-            # Level 4 - Top platforms (y=90-130) - 120px above Level 3
-            {'x': 350, 'y': 100, 'width': 70, 'height': 20},   # Offset for variety
-            {'x': 600, 'y': 110, 'width': 75, 'height': 20},   # 250px spacing
-            {'x': 850, 'y': 105, 'width': 70, 'height': 20},   # 250px spacing
-            {'x': 1100, 'y': 115, 'width': 75, 'height': 20},  # 250px spacing
-            {'x': 1350, 'y': 100, 'width': 70, 'height': 20},  # 250px spacing
-            {'x': 1600, 'y': 110, 'width': 75, 'height': 20},  # 250px spacing
-            {'x': 1850, 'y': 105, 'width': 70, 'height': 20},  # 250px spacing
+            # Level 3 - Third elevated platforms (y=20-60) - 140px above Level 2
+            {'x': 500, 'y': 30, 'width': 75, 'height': 20},     # Centered start, 400px spacing
+            {'x': 900, 'y': 40, 'width': 80, 'height': 20},     # 400px spacing - good distance
+            {'x': 1300, 'y': 35, 'width': 75, 'height': 20},    # 400px spacing - clear separation
+            {'x': 1700, 'y': 45, 'width': 80, 'height': 20},    # 400px spacing - well spaced
+            {'x': 2100, 'y': 30, 'width': 75, 'height': 20},    # 400px spacing - final level 3
         ]
         
-        # Create strategic items on platforms (positioned on platform centers)
+        # Create strategic items on HIGHER SPACED platforms (positioned on platform centers)
         self.game_items = [
-            # Ground level items (y=600-650)
-            {'x': 250, 'y': 600, 'type': 'stone'},      # On platform at x=200
-            {'x': 460, 'y': 610, 'type': 'water'},      # On platform at x=400
-            {'x': 700, 'y': 605, 'type': 'bread'},      # On platform at x=650
-            {'x': 955, 'y': 615, 'type': 'scroll'},     # On platform at x=900
-            {'x': 1200, 'y': 600, 'type': 'meat'},      # On platform at x=1150
-            {'x': 1460, 'y': 620, 'type': 'armor_of_god'}, # On platform at x=1400
-            {'x': 1700, 'y': 605, 'type': 'staff'},     # On platform at x=1650
+            # Base level items (y=480-520) - On much higher platforms
+            {'x': 460, 'y': 470, 'type': 'stone'},      # On platform at x=400
+            {'x': 860, 'y': 480, 'type': 'water'},      # On platform at x=800
+            {'x': 1260, 'y': 475, 'type': 'bread'},     # On platform at x=1200
+            {'x': 1660, 'y': 485, 'type': 'scroll'},    # On platform at x=1600
+            {'x': 2060, 'y': 470, 'type': 'meat'},      # On platform at x=2000
+            {'x': 2460, 'y': 480, 'type': 'armor_of_god'}, # On platform at x=2400
             
-            # Level 1 items (y=520-570)
-            {'x': 195, 'y': 520, 'type': 'stone'},      # On platform at x=150
-            {'x': 400, 'y': 530, 'type': 'water'},      # On platform at x=350
-            {'x': 595, 'y': 510, 'type': 'bread'},      # On platform at x=550
-            {'x': 800, 'y': 540, 'type': 'scroll'},     # On platform at x=750
-            {'x': 995, 'y': 520, 'type': 'meat'},       # On platform at x=950
-            {'x': 1250, 'y': 535, 'type': 'armor_of_god'}, # On platform at x=1200
+            # Level 1 items (y=320-360) - On elevated platforms
+            {'x': 360, 'y': 310, 'type': 'water'},      # On platform at x=300
+            {'x': 760, 'y': 320, 'type': 'bread'},      # On platform at x=700
+            {'x': 1160, 'y': 315, 'type': 'scroll'},    # On platform at x=1100
+            {'x': 1560, 'y': 325, 'type': 'meat'},      # On platform at x=1500
+            {'x': 1960, 'y': 310, 'type': 'armor_of_god'}, # On platform at x=1900
+            {'x': 2360, 'y': 320, 'type': 'staff'},     # On platform at x=2300
             
-            # Level 2 items (y=440-490)
-            {'x': 140, 'y': 440, 'type': 'water'},      # On platform at x=100
-            {'x': 345, 'y': 450, 'type': 'bread'},      # On platform at x=300
-            {'x': 542, 'y': 430, 'type': 'scroll'},     # On platform at x=500
-            {'x': 745, 'y': 460, 'type': 'meat'},       # On platform at x=700
-            {'x': 940, 'y': 440, 'type': 'armor_of_god'}, # On platform at x=900
-            {'x': 1145, 'y': 455, 'type': 'staff'},     # On platform at x=1100
+            # Level 2 items (y=160-200) - On higher platforms
+            {'x': 260, 'y': 150, 'type': 'scroll'},     # On platform at x=200
+            {'x': 660, 'y': 160, 'type': 'meat'},       # On platform at x=600
+            {'x': 1060, 'y': 155, 'type': 'armor_of_god'}, # On platform at x=1000
+            {'x': 1460, 'y': 165, 'type': 'staff'},     # On platform at x=1400
+            {'x': 1860, 'y': 150, 'type': 'stone'},     # On platform at x=1800
+            {'x': 2260, 'y': 160, 'type': 'water'},     # On platform at x=2200
             
-            # Level 3 items (y=360-410)
-            {'x': 287, 'y': 360, 'type': 'scroll'},     # On platform at x=250
-            {'x': 490, 'y': 370, 'type': 'meat'},       # On platform at x=450
-            {'x': 687, 'y': 350, 'type': 'armor_of_god'}, # On platform at x=650
-            {'x': 890, 'y': 380, 'type': 'staff'},      # On platform at x=850
-            {'x': 1087, 'y': 360, 'type': 'stone'},     # On platform at x=1050
-            
-            # Level 4 items (y=280-330)
-            {'x': 235, 'y': 280, 'type': 'meat'},       # On platform at x=200
-            {'x': 437, 'y': 290, 'type': 'armor_of_god'}, # On platform at x=400
-            {'x': 635, 'y': 270, 'type': 'staff'},      # On platform at x=600
-            {'x': 837, 'y': 300, 'type': 'stone'},      # On platform at x=800
-            
-            # Level 5 items (y=200-250) - Premium rewards
-            {'x': 182, 'y': 200, 'type': 'armor_of_god'}, # On platform at x=150
-            {'x': 385, 'y': 210, 'type': 'staff'},      # On platform at x=350
-            {'x': 582, 'y': 190, 'type': 'meat'},       # On platform at x=550
-            {'x': 785, 'y': 220, 'type': 'scroll'},     # On platform at x=750
+            # Level 3 items (y=20-60) - On top platforms - Ultimate rewards
+            {'x': 560, 'y': 10, 'type': 'armor_of_god'}, # On platform at x=500 - Ultimate reward
+            {'x': 960, 'y': 20, 'type': 'staff'},       # On platform at x=900 - Ultimate reward
+            {'x': 1360, 'y': 15, 'type': 'meat'},       # On platform at x=1300 - Ultimate reward
+            {'x': 1760, 'y': 25, 'type': 'scroll'},     # On platform at x=1700 - Ultimate reward
+            {'x': 2160, 'y': 10, 'type': 'stone'},      # On platform at x=2100 - Ultimate reward
         ]
         
         # Create NPCs and enemies on platforms
@@ -537,7 +528,11 @@ class MosesAdventureGame:
             # Global key events
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_F1:
+                    # Toggle FPS display
                     self.show_fps = not self.show_fps
+                    fps_status = "ON" if self.show_fps else "OFF"
+                    print(f"📊 FPS display toggled {fps_status}")
+                
                 elif event.key == pygame.K_F11:
                     self.toggle_fullscreen()
             
@@ -547,10 +542,22 @@ class MosesAdventureGame:
             elif self.state == GameState.PLAYING:
                 self.handle_game_events(event)
             elif self.state == GameState.DIALOGUE:
+                # Handle dialogue events
                 self.dialogue_system.handle_event(event)
                 if not self.dialogue_system.active:
                     self.state = GameState.PLAYING
-                    # Remove the NPC that was just talked to
+                    print("🎭 Dialogue ended - returning to gameplay")
+                self.dialogue_system.render(self.screen, self.sprites)
+                # Dialogue system rendering (debug reduced)
+                # Emergency dialogue exit if system is stuck
+                if not hasattr(self.dialogue_system, 'active') or not self.dialogue_system.active:
+                    print("🔄 Dialogue system inactive - returning to game")
+                    self.state = GameState.PLAYING
+                else:
+                    self.dialogue_system.handle_event(event)
+                    if not self.dialogue_system.active:
+                        self.state = GameState.PLAYING
+                        # Remove the NPC that was just talked to
                     self.remove_interacted_npc()
             elif self.state == GameState.INVENTORY:
                 self.inventory.handle_event(event)
@@ -589,19 +596,33 @@ class MosesAdventureGame:
                     # Throw stone
                     self.throw_stone_from_inventory()
                     return
-                elif event.key == pygame.K_ESCAPE:
+                
+                # Skip dialogue with SPACE or ENTER
+                elif event.key in [pygame.K_SPACE, pygame.K_RETURN]:
+                    if self.state == GameState.DIALOGUE:
+                        if hasattr(self.dialogue_system, 'active') and self.dialogue_system.active:
+                            # Skip to end of current dialogue or advance
+                            if hasattr(self.dialogue_system, 'skip_to_end'):
+                                self.dialogue_system.skip_to_end()
+                            else:
+                                # Force dialogue to end if stuck
+                                self.dialogue_system.active = False
+                                self.state = GameState.PLAYING
+                                print("🔄 Dialogue skipped - returning to game")
+                
+            elif event.key == pygame.K_ESCAPE:
                     # Cancel stone throw mode
                     self.stone_throw_mode = False
                     self.visual_feedback.show_message("Stone throw cancelled", 1.5)
                     return
             
             # Handle healing
-            if event.key == pygame.K_h:
+            elif event.key == pygame.K_h:
                 self.apply_healing()
                 return
             
             # Handle staff shooting - COMPREHENSIVE DEBUG VERSION
-            if event.key == pygame.K_w:
+            elif event.key == pygame.K_w:
                 print("🎯 W KEY PRESSED!")
                 if self.player:
                     print(f"🎯 Player exists: {self.player is not None}")
@@ -631,7 +652,7 @@ class MosesAdventureGame:
                     print("❌ No player found")
                 return
             
-            if event.key == pygame.K_i:
+            elif event.key == pygame.K_i:
                 self.inventory.active = True
                 self.state = GameState.INVENTORY
             elif event.key == pygame.K_ESCAPE:
@@ -739,12 +760,26 @@ class MosesAdventureGame:
         print("🏗️  Initializing multi-level platform system...")
         self.initialize_multi_level_world()
         
+        # CRITICAL: Ensure player has platform reference for collision detection
+        if hasattr(self, 'game_platforms') and hasattr(self, 'player'):
+            self.player.game_platforms = self.game_platforms
+            print(f"🔧 ✅ Player now has access to {len(self.game_platforms)} platforms for collision detection")
+        else:
+            print("❌ Failed to assign platforms to player!")
+        
         # Platform integration handled by render_platforms method
         print(f"🏗️  Platform system ready with {len(self.game_platforms)} platforms")
         
         # Initialize multi-level platform system
         print("🏗️  Initializing multi-level platform system...")
         self.initialize_multi_level_world()
+        
+        # CRITICAL: Ensure player has platform reference for collision detection
+        if hasattr(self, 'game_platforms') and hasattr(self, 'player'):
+            self.player.game_platforms = self.game_platforms
+            print(f"🔧 ✅ Player now has access to {len(self.game_platforms)} platforms for collision detection")
+        else:
+            print("❌ Failed to assign platforms to player!")
         
         # Platform integration handled by render_platforms method
         print(f"🏗️  Platform system ready with {len(self.game_platforms)} platforms")
@@ -792,12 +827,26 @@ class MosesAdventureGame:
         print("🏗️  Initializing multi-level platform system...")
         self.initialize_multi_level_world()
         
+        # CRITICAL: Ensure player has platform reference for collision detection
+        if hasattr(self, 'game_platforms') and hasattr(self, 'player'):
+            self.player.game_platforms = self.game_platforms
+            print(f"🔧 ✅ Player now has access to {len(self.game_platforms)} platforms for collision detection")
+        else:
+            print("❌ Failed to assign platforms to player!")
+        
         # Platform integration handled by render_platforms method
         print(f"🏗️  Platform system ready with {len(self.game_platforms)} platforms")
         
         # Initialize multi-level platform system
         print("🏗️  Initializing multi-level platform system...")
         self.initialize_multi_level_world()
+        
+        # CRITICAL: Ensure player has platform reference for collision detection
+        if hasattr(self, 'game_platforms') and hasattr(self, 'player'):
+            self.player.game_platforms = self.game_platforms
+            print(f"🔧 ✅ Player now has access to {len(self.game_platforms)} platforms for collision detection")
+        else:
+            print("❌ Failed to assign platforms to player!")
         
         # Platform integration handled by render_platforms method
         print(f"🏗️  Platform system ready with {len(self.game_platforms)} platforms")
@@ -811,14 +860,25 @@ class MosesAdventureGame:
         
         # Reset game systems
         self.moral_system = MoralSystem()
-        self.dialogue_system.moral_system = self.moral_system
+        # self.dialogue_system.moral_system = self.moral_system
         self.inventory = Inventory()
         self.inventory.game_instance = self  # Connect for item effects
         self.visual_feedback = VisualFeedback()
         
         # START WITH OPENING DIALOGUE instead of going straight to playing
+        
+        # DIALOGUE BYPASS FOR TESTING - uncomment next line to skip dialogue
+        # self.state = GameState.PLAYING; return
+        
+        # START WITH OPENING DIALOGUE - RESTORED
         self.state = GameState.DIALOGUE
         self.dialogue_system.start_dialogue("opening")
+        print("🎭 Opening dialogue started - narrator text should appear")
+        print("💬 DIALOGUE CONTROLS:")
+        print("   - SPACE or ENTER: Advance dialogue")
+        print("   - ESC: Skip dialogue (if needed)")
+        print("   - Read the narrator text and press SPACE to continue")
+        
         
         print("Game started! Opening dialogue will begin...")
         print("Controls: Arrow keys to move, E to interact, M for music, S for sound")
@@ -835,37 +895,64 @@ class MosesAdventureGame:
             if self.player:
                 # Update player physics
                 self.player.update(dt)
-                
-                # Update simple enemies
-                self.level_manager.update_simple_enemies(dt)
-                
-                # Update stone projectiles
-                self.level_manager.update_stones(dt)
-                
-                # Check stone-enemy collisions
-                hits = self.level_manager.check_stone_enemy_collisions()
-                if hits > 0:
-                    # Play enemy defeat sound
-                    if hasattr(self.sound_manager, 'play_sound'):
-                        self.sound_manager.play_sound('enemy_defeat')
-                
-                # Check collisions AFTER player update
-                self.check_collisions()
-                
-                # Update camera and other systems
-                self.camera.follow_player(self.player)
-                self.check_interactions()
-                self.check_level_transitions()
-                
-                # Check for game over
-                if self.player.health <= 0:
-                    self.state = GameState.GAME_OVER
-            
+        
+        # Update camera to follow Moses vertically and horizontally
+        if hasattr(self, 'camera') and hasattr(self, 'player'):
+            self.camera.follow_player(self.player)
+        
+        # Update simple enemies
+        self.level_manager.update_simple_enemies(dt)
+        
+        # Update stone projectiles
+        self.level_manager.update_stones(dt)
+        
+        # Check stone-enemy collisions
+        hits = self.level_manager.check_stone_enemy_collisions()
+        if hits > 0:
+            # Play enemy defeat sound
+            if hasattr(self.sound_manager, 'play_sound'):
+                self.sound_manager.play_sound('enemy_defeat')
+        
+        # Check collisions AFTER player update
+        self.check_collisions()
+        
+        # Update camera and other systems
+        if self.player:
+            self.camera.follow_player(self.player)
+        self.check_interactions()
+        self.check_level_transitions()
+        
+        # Check for game over
+        if self.player and self.player.health <= 0:
+            self.state = GameState.GAME_OVER
+        
             self.level_manager.update(dt)
+
+        # Update all visual feedback messages
+        if self.consumption_text_timer > 0:
+            self.consumption_text_timer -= dt
+            if self.consumption_text_timer <= 0:
+                self.consumption_text = ""  # Clear text after timer expires
+        
+        # Update item feedback messages (separate from dialogue)
+        if hasattr(self, 'item_feedback_messages'):
+            for message in self.item_feedback_messages[:]:
+                message['timer'] -= dt
+                if message['timer'] <= 0:
+                    self.item_feedback_messages.remove(message)
+        
+        # Update feedback messages list (keep for backward compatibility)
+        if hasattr(self, 'feedback_messages'):
+            for message in self.feedback_messages[:]:
+                message['timer'] -= dt
+                if message['timer'] <= 0:
+                    self.feedback_messages.remove(message)
             self.visual_feedback.update(dt)
         
         elif self.state == GameState.DIALOGUE:
-            self.dialogue_system.update(dt)
+            # Update dialogue system for typing effect
+            if self.dialogue_system and self.dialogue_system.active:
+                self.dialogue_system.update(dt)
     
     def check_collisions(self):
         """Check for collisions with FIXED physics effects"""
@@ -1162,7 +1249,7 @@ class MosesAdventureGame:
                     
                     # Show NPC info in console
                     if not hasattr(npc, 'info_shown'):
-                        print(f"💬 Near {npc.npc_type} at x={npc.rect.x}, y={npc.rect.y} - Press E to interact")
+                        print(f"💬 Press E to talk to {npc.npc_type}")
                         print(f"📏 Distance: {distance} pixels (Moses at x={self.player.rect.x})")
                         npc.info_shown = True
                     
@@ -1387,6 +1474,11 @@ class MosesAdventureGame:
             self.render_menu()
         elif self.state in [GameState.PLAYING, GameState.DIALOGUE, GameState.INVENTORY, GameState.PAUSED]:
             self.render_game()
+
+            # Render dialogue system if active (for NPC interactions)
+            if self.dialogue_system.active:
+                self.dialogue_system.render(self.screen)
+                print("🎭 Rendering NPC dialogue on screen")
             
             if self.state == GameState.DIALOGUE:
                 self.dialogue_system.render(self.screen, self.sprites)
@@ -1435,7 +1527,18 @@ class MosesAdventureGame:
             stone_text = self.font_manager.render_text("🎯 STONE READY - Click on enemy to throw!", 'medium', GOLD)
             stone_rect = stone_text.get_rect(center=(SCREEN_WIDTH//2, 50))
             self.screen.blit(stone_text, stone_rect)
-        
+                
+        # FPS Counter - Only show when toggled with F1
+        if hasattr(self, 'show_fps') and self.show_fps and hasattr(self, 'clock'):
+            fps = self.clock.get_fps()
+            if fps > 0:  # Avoid division by zero
+                fps_text = self.font_manager.get_font('small').render(f"FPS: {fps:.1f}", True, (255, 255, 255))
+                self.screen.blit(fps_text, (10, 10))
+                
+                # Performance warning
+                if fps < 30:
+                    warning_text = self.font_manager.get_font('small').render("Low FPS - Consider reducing quality", True, (255, 255, 0))
+                    self.screen.blit(warning_text, (10, 35))
         pygame.display.flip()
     
     def render_menu(self):
@@ -1523,6 +1626,9 @@ class MosesAdventureGame:
         # Render level elements (platforms, items, NPCs)
         self.level_manager.render(self.screen, camera_offset)
 
+        # Render FIXED ground that stays at bottom of screen
+        self.render_fixed_ground(camera_offset)
+        
         # Render multi-level platforms
         self.render_platforms(camera_offset)
                 
@@ -1535,6 +1641,39 @@ class MosesAdventureGame:
                 self.player.render_staff_projectiles(self.screen, camera_offset)
         
         # Render UI on top of everything
+        
+        # Render ITEM feedback messages only (disappear after 1.5 seconds)
+        if hasattr(self, 'item_feedback_messages') and self.item_feedback_messages:
+            import pygame
+            for i, message in enumerate(self.item_feedback_messages):
+                text_surface = self.font_manager.get_font('medium').render(message['text'], True, message['color'])
+                
+                # Position item feedback at top-right corner (away from dialogue)
+                text_rect = text_surface.get_rect()
+                text_rect.right = SCREEN_WIDTH - 20
+                text_rect.y = 20 + (i * 35)  # Stack messages with 35px spacing
+                
+                # Add background for better visibility
+                bg_rect = text_rect.inflate(20, 10)
+                pygame.draw.rect(self.screen, (0, 0, 0, 180), bg_rect)
+                pygame.draw.rect(self.screen, message['color'], bg_rect, 2)
+                
+                self.screen.blit(text_surface, text_rect)
+        
+        # Legacy consumption text support (for backward compatibility)
+        elif hasattr(self, 'consumption_text') and self.consumption_text and hasattr(self, 'consumption_text_timer') and self.consumption_text_timer > 0:
+            import pygame
+            text_surface = self.font_manager.get_font('medium').render(self.consumption_text, True, (255, 255, 255))
+            text_rect = text_surface.get_rect()
+            text_rect.centerx = SCREEN_WIDTH // 2
+            text_rect.y = 50
+            
+            bg_rect = text_rect.inflate(20, 10)
+            pygame.draw.rect(self.screen, (0, 0, 0, 180), bg_rect)
+            pygame.draw.rect(self.screen, (255, 255, 255), bg_rect, 2)
+            
+            self.screen.blit(text_surface, text_rect)
+        
         self.render_ui()
     
     def render_ui(self):
@@ -1783,32 +1922,145 @@ class MosesAdventureGame:
 
 
     def render_platforms(self, camera_offset):
-        """Render all platforms with consistent colors matching original dark platforms"""
+        """OPTIMIZED: Render platforms with better performance"""
         if not hasattr(self, 'game_platforms'):
             return
         
         import pygame
+        
+        # OPTIMIZATION: Pre-calculate screen bounds for culling
+        left_bound = -50
+        right_bound = SCREEN_WIDTH + 50
+        top_bound = -50
+        bottom_bound = SCREEN_HEIGHT + 50
         
         for platform in self.game_platforms:
             # Calculate screen position
             screen_x = platform['x'] - camera_offset[0]
             screen_y = platform['y'] - camera_offset[1]
             
-            # Only render platforms that are visible on screen
-            if -50 <= screen_x <= SCREEN_WIDTH + 50 and -50 <= screen_y <= SCREEN_HEIGHT + 50:
-                # Create platform rectangle
-                platform_rect = pygame.Rect(screen_x, screen_y, platform['width'], platform['height'])
-                
-                # Draw platform with consistent brown stone color (matching original dark platforms)
-                pygame.draw.rect(self.screen, (139, 69, 19), platform_rect)    # Brown stone (same as original)
-                pygame.draw.rect(self.screen, (101, 67, 33), platform_rect, 3) # Dark brown border
-                pygame.draw.rect(self.screen, (160, 82, 45), (screen_x + 2, screen_y + 2, platform['width'] - 4, 4))  # Light brown highlight
-                
-                # Add subtle texture lines
-                for i in range(2, platform['width'] - 2, 8):
-                    pygame.draw.line(self.screen, (120, 60, 15), 
-                                   (screen_x + i, screen_y + 1), 
-                                   (screen_x + i, screen_y + platform['height'] - 1))
+            # OPTIMIZED: Early culling check
+            if not (left_bound <= screen_x <= right_bound and top_bound <= screen_y <= bottom_bound):
+                continue
+            
+            # Create platform rectangle
+            platform_rect = pygame.Rect(screen_x, screen_y, platform['width'], platform['height'])
+            
+            # OPTIMIZED: Simplified rendering for better performance
+            pygame.draw.rect(self.screen, (139, 69, 19), platform_rect)    # Brown stone
+            pygame.draw.rect(self.screen, (101, 67, 33), platform_rect, 2) # Border (reduced thickness)
+            
+            # OPTIMIZED: Reduced texture details for better FPS
+            if platform['width'] > 60:  # Only add details to larger platforms
+                pygame.draw.rect(self.screen, (160, 82, 45), (screen_x + 2, screen_y + 2, platform['width'] - 4, 3))
+
+
+    def render_fixed_ground(self, camera_offset):
+        """Render ground that stays FIXED at bottom of screen"""
+        import pygame
+        
+        # Ground dimensions
+        ground_height = 50
+        ground_width = SCREEN_WIDTH * 6  # Extended ground width
+        
+        # FIXED: Ground Y position always at bottom of screen
+        ground_y = SCREEN_HEIGHT - ground_height
+        
+        # Ground X position follows camera horizontally only
+        ground_x = -camera_offset[0]
+        
+        # Create ground rectangle
+        ground_rect = pygame.Rect(ground_x, ground_y, ground_width, ground_height)
+        
+        # Draw ground with brown stone color (matching platforms)
+        pygame.draw.rect(self.screen, (139, 69, 19), ground_rect)    # Brown stone
+        pygame.draw.rect(self.screen, (101, 67, 33), ground_rect, 3) # Dark brown border
+        
+        # Add ground texture
+        for x in range(ground_x, ground_x + ground_width, 20):
+            if 0 <= x <= SCREEN_WIDTH:  # Only draw visible texture
+                pygame.draw.line(self.screen, (120, 60, 15), 
+                               (x, ground_y + 5), (x, ground_y + ground_height - 5))
+
+
+    def show_consumption_text(self, text):
+        """Show consumption text that disappears after 1 second"""
+        self.consumption_text = text
+        self.consumption_text_timer = self.consumption_text_duration
+        print(text)  # Also print to console for debugging
+
+
+    def show_feedback_message(self, text, message_type="info", color=(255, 255, 255)):
+        """Show a feedback message that disappears after 1.5 seconds"""
+        if not hasattr(self, 'feedback_messages'):
+            self.feedback_messages = []
+        
+        message = {
+            'text': text,
+            'timer': self.feedback_duration,
+            'type': message_type,
+            'color': color,
+            'y_offset': len(self.feedback_messages) * 30  # Stack messages vertically
+        }
+        
+        self.feedback_messages.append(message)
+        print(text)  # Also print to console for debugging
+    
+    def show_item_collection_message(self, item_name, item_type):
+        """Show item collection feedback message"""
+        emoji_map = {
+            'stone': '🪨',
+            'water': '💧',
+            'bread': '🍞',
+            'meat': '🥩',
+            'scroll': '📜',
+            'armor_of_god': '🛡️',
+            'staff': '🪄'
+        }
+        
+        emoji = emoji_map.get(item_type, '📦')
+        message = f"{emoji} Collected {item_name}!"
+        self.show_feedback_message(message, "collection", (0, 255, 0))  # Green for collection
+    
+    def show_item_usage_message(self, item_name, effect):
+        """Show item usage feedback message"""
+        message = f"✨ Used {item_name}! {effect}"
+        self.show_feedback_message(message, "usage", (255, 255, 0))  # Yellow for usage
+    
+    def show_combat_message(self, message):
+        """Show combat feedback message"""
+        self.show_feedback_message(message, "combat", (255, 100, 100))  # Red for combat
+    
+    def show_interaction_message(self, message):
+        """Show interaction feedback message"""
+        self.show_feedback_message(message, "interaction", (100, 200, 255))  # Blue for interaction
+    
+    def show_system_message(self, message):
+        """Show system feedback message"""
+        self.show_feedback_message(message, "system", (200, 200, 200))  # Gray for system
+
+
+    
+    def show_item_collection_feedback(self, item_name, item_type):
+        """Show item collection feedback (green, 1.5 seconds)"""
+        emoji_map = {
+            'stone': '🪨',
+            'water': '💧', 
+            'bread': '🍞',
+            'meat': '🥩',
+            'scroll': '📜',
+            'armor_of_god': '🛡️',
+            'staff': '🪄'
+        }
+        
+        emoji = emoji_map.get(item_type, '📦')
+        message = f"{emoji} Collected {item_name}!"
+        self.show_item_feedback(message, (0, 255, 0))  # Green for collection
+    
+    def show_item_usage_feedback(self, item_name, effect):
+        """Show item usage feedback (yellow, 1.5 seconds)"""
+        message = f"✨ Used {item_name}! {effect}"
+        self.show_item_feedback(message, (255, 255, 0))  # Yellow for usage
 
 def main():
     """Main function to run the game"""
