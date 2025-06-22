@@ -597,7 +597,7 @@ class MosesAdventureGame:
                 self.handle_menu_events(event)
             elif self.state == GameState.PLAYING:
                 self.handle_game_events(event)
-            elif self.state == GameState.DIALOGUE:
+            if self.state == GameState.DIALOGUE:
                 # Handle dialogue events
                 self.dialogue_system.handle_event(event)
                 if not self.dialogue_system.active:
@@ -939,7 +939,67 @@ class MosesAdventureGame:
         print("Game started! Opening dialogue will begin...")
         print("Controls: Arrow keys to move, E to interact, M for music, S for sound")
     
-    def update(self, dt):
+    
+    def game_over(self):
+        """Handle game over state"""
+        print("💀 GAME OVER - Moses has fallen!")
+        self.state = GameState.GAME_OVER
+        
+        # Stop all sounds
+        if hasattr(self, 'sound_manager'):
+            self.sound_manager.stop_all_sounds()
+        
+        # Show game over message
+        if hasattr(self, 'visual_feedback'):
+            self.visual_feedback.show_message("GAME OVER - Press R to restart, Q to quit, M for main menu", 10.0)
+    
+    def restart_game(self):
+        """Restart the game"""
+        print("🔄 Restarting Moses Adventure...")
+        
+        # Reset player
+        if self.player:
+            self.player.health = getattr(self.player, 'max_health', 100)
+            self.player.x = 150
+            self.player.y = 670
+            self.player.velocity_x = 0
+            self.player.velocity_y = 0
+            if hasattr(self.player, 'armor_active'):
+                self.player.armor_active = False
+                self.player.armor_timer = 0
+        
+        # Reset inventory
+        if hasattr(self, 'inventory'):
+            for item in self.inventory.items:
+                self.inventory.items[item] = 0
+            self.inventory.stone_ready = False
+            self.inventory.staff_active = False
+            self.inventory.armor_active = False
+        
+        # Reset game state
+        self.state = GameState.PLAYING
+        
+        # Clear visual feedback
+        if hasattr(self, 'visual_feedback'):
+            self.visual_feedback.messages.clear()
+        
+        # Restart background music
+        if hasattr(self, 'sound_manager'):
+            self.sound_manager.play_background_music()
+        
+        print("✅ Game restarted successfully!")
+    
+    def return_to_main_menu(self):
+        """Return to main menu"""
+        print("🏠 Returning to main menu...")
+        self.state = GameState.MENU
+        
+        # Reset everything
+        self.restart_game()
+        
+        if hasattr(self, 'visual_feedback'):
+            self.visual_feedback.show_message("Welcome to Moses Adventure!", 3.0)
+def update(self, dt):
         """Update game state with delta time for smooth 60 FPS"""
         # Update scripture dialogue timer
         if self.scripture_dialogue_active:
@@ -971,6 +1031,25 @@ class MosesAdventureGame:
         
         # Check collisions AFTER player update
         self.check_collisions()
+
+        # Enemy collision damage
+        if self.player and self.player.health > 0:
+            player_rect = pygame.Rect(self.player.x, self.player.y, self.player.width, self.player.height)
+            for enemy in self.enemies:
+                if hasattr(enemy, 'x') and hasattr(enemy, 'y'):
+                    enemy_rect = pygame.Rect(enemy.x, enemy.y, 30, 30)
+                    if player_rect.colliderect(enemy_rect):
+                        damage = 10
+                        if hasattr(self.player, 'armor_active') and self.player.armor_active:
+                            damage = int(damage * 0.25)
+                        self.player.health -= damage
+                        if self.player.health < 0:
+                            self.player.health = 0
+                        print(f'💔 Took {damage} damage! Health: {self.player.health}/100')
+                        break
+
+        # Check enemy collisions for damage
+        self.check_enemy_collisions()
         
         # Update camera and other systems
         if self.player:
@@ -1005,10 +1084,14 @@ class MosesAdventureGame:
                     self.feedback_messages.remove(message)
             self.visual_feedback.update(dt)
 
+        # Update inventory system
+        if self.inventory:
+            self.inventory.update(dt)
+
         # Update projectiles
         self.update_projectiles(dt)
         
-        elif self.state == GameState.DIALOGUE:
+        if self.state == GameState.DIALOGUE:
             # Update dialogue system for typing effect
             if self.dialogue_system and self.dialogue_system.active:
                 self.dialogue_system.update(dt)
@@ -1119,6 +1202,52 @@ class MosesAdventureGame:
         except Exception as e:
             print(f"⚠️  Collision check error: {e}")
     
+    def check_enemy_collisions(self):
+        """Check collisions between player and enemies"""
+        if not self.player or self.player.health <= 0:
+            return
+        
+        player_rect = pygame.Rect(self.player.x, self.player.y, self.player.width, self.player.height)
+        
+        for enemy in self.enemies[:]:
+            if hasattr(enemy, 'x') and hasattr(enemy, 'y'):
+                enemy_rect = pygame.Rect(enemy.x, enemy.y, 
+                                       getattr(enemy, 'width', 30), 
+                                       getattr(enemy, 'height', 30))
+                
+                if player_rect.colliderect(enemy_rect):
+                    # Player takes damage
+                    damage = 10
+                    if hasattr(self.player, 'take_damage'):
+                        actual_damage = self.player.take_damage(damage)
+                    else:
+                        # Fallback damage system
+                        if hasattr(self.player, 'armor_active') and self.player.armor_active:
+                            damage = int(damage * 0.25)  # Armor reduces damage by 75%
+                            print(f"🛡️ Armor of God reduced damage to {damage}")
+                        
+                        self.player.health -= damage
+                        if self.player.health < 0:
+                            self.player.health = 0
+                        
+                        print(f"💔 Moses took {damage} damage from enemy! Health: {self.player.health}/{getattr(self.player, 'max_health', 100)}")
+                        actual_damage = damage
+                    
+                    # Visual feedback
+                    if hasattr(self, 'visual_feedback'):
+                        self.visual_feedback.show_message(f"Took {actual_damage} damage!", 2.0)
+                    
+                    # Check for game over
+                    if self.player.health <= 0:
+                        self.game_over()
+                    
+                    # Knockback effect (optional)
+                    if hasattr(self.player, 'velocity_x'):
+                        knockback_direction = 1 if enemy.x < self.player.x else -1
+                        self.player.velocity_x = knockback_direction * 3
+                    
+                    break  # Only one collision per frame
+
     def handle_platform_collision(self, platform):
         """Handle collision with platforms with FIXED physics"""
         if not self.player or not platform:
@@ -1740,6 +1869,45 @@ class MosesAdventureGame:
         
         self.render_ui()
     
+    def render_game_over(self):
+        """Render game over screen"""
+        # Fill screen with dark overlay
+        overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
+        overlay.set_alpha(180)
+        overlay.fill((0, 0, 0))
+        self.screen.blit(overlay, (0, 0))
+        
+        # Game Over title
+        title_font = pygame.font.Font(None, 72)
+        title_text = title_font.render("GAME OVER", True, (255, 0, 0))
+        title_rect = title_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 100))
+        self.screen.blit(title_text, title_rect)
+        
+        # Subtitle
+        subtitle_font = pygame.font.Font(None, 36)
+        subtitle_text = subtitle_font.render("Moses has fallen in his divine mission", True, (255, 255, 255))
+        subtitle_rect = subtitle_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 50))
+        self.screen.blit(subtitle_text, subtitle_rect)
+        
+        # Options
+        option_font = pygame.font.Font(None, 32)
+        options = [
+            "Press R to Restart",
+            "Press M for Main Menu", 
+            "Press Q to Quit"
+        ]
+        
+        for i, option in enumerate(options):
+            option_text = option_font.render(option, True, (255, 255, 0))
+            option_rect = option_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 20 + i * 40))
+            self.screen.blit(option_text, option_rect)
+        
+        # Health status
+        health_font = pygame.font.Font(None, 28)
+        health_text = health_font.render(f"Final Health: {self.player.health if self.player else 0}/100", True, (255, 100, 100))
+        health_rect = health_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 150))
+        self.screen.blit(health_text, health_rect)
+
     def render_ui(self):
         """Render UI elements with debug info"""
         if self.player:

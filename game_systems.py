@@ -158,7 +158,7 @@ class DialogueSystem:
         
         print("✅ Dialogue ended with typing effect - audio restored")
     
-                def render(self, screen, sprites=None):
+    def render(self, screen, sprites=None):
         """Render dialogue with VISIBLE text on screen"""
         if not self.active or not self.current_node:
             return
