@@ -424,20 +424,25 @@ class Player:
         self.update_animation_state()
         self.update_animation(dt)
         
-        # Platform collision detection - check all platforms
+        # Platform collision detection - FIXED VERSION
         platform_collision = False
         
-        # Check collision with game platforms (new system)
-        if hasattr(self, 'game_platforms'):
-            for platform in self.game_platforms:
+        # OPTIMIZED: Check if we have platforms (reduced debug output)
+        if hasattr(self, 'game_platforms') and self.game_platforms:
+            # Only check platforms near the player for better performance
+            player_x = self.rect.centerx
+            nearby_platforms = [p for p in self.game_platforms 
+                              if abs(p['x'] + p['width']/2 - player_x) < 500]  # Only check nearby platforms
+            
+            for platform in nearby_platforms:
                 platform_rect = pygame.Rect(platform['x'], platform['y'], platform['width'], platform['height'])
                 
-                # Check if player is falling onto platform
+                # OPTIMIZED: Check if player is falling onto platform
                 if (self.velocity_y >= 0 and  # Falling or stationary
-                    self.rect.bottom >= platform_rect.top and  # Player bottom at or below platform top
-                    self.rect.bottom <= platform_rect.top + 10 and  # Within landing tolerance
-                    self.rect.right > platform_rect.left + 5 and  # Horizontal overlap (with margin)
-                    self.rect.left < platform_rect.right - 5):  # Horizontal overlap (with margin)
+                    self.rect.bottom >= platform_rect.top - 5 and  # Player bottom near platform top
+                    self.rect.bottom <= platform_rect.top + 15 and  # Generous landing tolerance
+                    self.rect.right > platform_rect.left + 2 and  # Horizontal overlap (small margin)
+                    self.rect.left < platform_rect.right - 2):  # Horizontal overlap (small margin)
                     
                     # Land on platform
                     self.rect.bottom = platform_rect.top
@@ -445,7 +450,9 @@ class Player:
                     self.on_ground = True
                     self.is_jumping = False
                     platform_collision = True
-                    print(f"🏗️  Moses landed on platform at x={platform['x']}, y={platform['y']}")
+                    # Reduced debug output for performance
+                    if hasattr(self, 'debug_collision') and self.debug_collision:
+                        print(f"🏗️  ✅ MOSES LANDED ON PLATFORM at x={platform['x']}, y={platform['y']}")
                     break
         
         # Ground collision - ensure player stays on the ground platform (fallback)
@@ -688,24 +695,38 @@ class Camera:
         self.target_x = 0
         self.target_y = 0
         self.smoothing = 0.1
+        self.vertical_smoothing = 0.08  # Slightly slower vertical movement for comfort
+        self.vertical_deadzone = 50  # Pixels of movement before camera follows vertically
     
     def follow_player(self, player):
-        """Follow the player horizontally only - keep ground at bottom"""
+        """Follow the player both horizontally AND vertically for platform jumping"""
         if not player:
             return
         
-        # Only follow player horizontally (like classic platformers)
+        # Horizontal following (existing)
         self.target_x = player.rect.centerx - SCREEN_WIDTH // 2
-        # Keep camera at ground level (no vertical following)
-        self.target_y = 0
+        
+        # VERTICAL FOLLOWING - Camera follows Moses up and down platforms
+        self.target_y = player.rect.centery - SCREEN_HEIGHT // 2
         
         # Smooth horizontal camera movement
         self.x += (self.target_x - self.x) * self.smoothing
-        # No vertical movement - ground stays at bottom
-        self.y = 0
+        
+        # Smooth vertical camera movement with deadzone
+        y_diff = self.target_y - self.y
+        if abs(y_diff) > self.vertical_deadzone:  # Only move if significant vertical movement
+            self.y += y_diff * self.vertical_smoothing
         
         # Keep camera within reasonable bounds
-        self.x = max(0, min(self.x, SCREEN_WIDTH * 5))  # Allow scrolling up to 5 screen widths
+        self.x = max(0, min(self.x, SCREEN_WIDTH * 5))  # Horizontal bounds
+        
+        # Extended vertical bounds for platform exploration
+        # Allow camera to go higher for platforms, but not too low
+        self.y = max(-500, min(self.y, 200))  # Extended vertical range
+        
+        # OPTIMIZED: Reduced debug output for better performance
+        if hasattr(self, 'debug_camera') and self.debug_camera and abs(y_diff) > self.vertical_deadzone:
+            print(f"📹 Camera following Moses vertically: player_y={player.rect.centery}, camera_y={self.y}")
     
     def get_offset(self):
         """Get camera offset for rendering"""
