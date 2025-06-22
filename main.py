@@ -92,6 +92,9 @@ class MosesAdventureGame:
         self.inventory = Inventory()
         self.inventory.game_instance = self  # Connect for item effects
         self.dialogue_system = DialogueSystem()
+
+        # Initialize enemies list
+        self.enemies = []
         self.dialogue_system.game_instance = self  # Connect for health effects
         self.sound_manager = SoundManager()
         self.moral_system = MoralSystem()
@@ -548,6 +551,258 @@ class MosesAdventureGame:
                 pygame.draw.circle(screen, (255, 255, 255), 
                                  (int(projectile['x']), int(projectile['y'])), 4)
 
+    
+    
+    def check_item_collection(self):
+        """FIXED: Item collection system - walk over items to collect"""
+        if not self.player or not hasattr(self.player, 'rect'):
+            return
+        
+        player_rect = self.player.rect
+        collected_items = []
+        
+        # Check item collisions with larger collection area
+        for item in getattr(self, 'items', []):
+            if hasattr(item, 'x') and hasattr(item, 'y') and hasattr(item, 'type'):
+                # FIXED: Larger collection area for easier pickup
+                item_rect = pygame.Rect(item.x - 5, item.y - 5, 30, 30)
+                
+                if player_rect.colliderect(item_rect):
+                    # Add to inventory
+                    if self.inventory:
+                        self.inventory.add_item(item.type, 1)
+                        
+                        # Play pickup sound
+                        if hasattr(self, 'sound_manager') and self.sound_manager:
+                            self.sound_manager.play_sound('pickup')
+                        
+                        # Show collection message
+                        item_names = {
+                            'stone': 'Stone',
+                            'water': 'Water',
+                            'bread': 'Bread', 
+                            'meat': 'Meat',
+                            'scroll': 'Scroll',
+                            'armor_of_god': 'Armor of God',
+                            'staff': 'Staff of Moses'
+                        }
+                        
+                        item_name = item_names.get(item.type, item.type.title())
+                        print(f"📦 Collected {item_name}!")
+                        
+                        # Visual feedback
+                        if hasattr(self, 'show_item_collection_message'):
+                            self.show_item_collection_message(item_name, item.type)
+                    
+                    collected_items.append(item)
+        
+        # Remove collected items
+        if hasattr(self, 'items'):
+            for item in collected_items:
+                if item in self.items:
+                    self.items.remove(item)
+    def check_collisions(self):
+        """FINAL FIX: Comprehensive collision detection with guaranteed ground detection"""
+        if not self.player or not hasattr(self.player, 'rect'):
+            return
+        
+        player_rect = self.player.rect
+        ground_level = SCREEN_HEIGHT - 50  # 718
+        
+        # ALWAYS check ground first - this is the most important
+        if player_rect.bottom >= ground_level:
+            player_rect.bottom = ground_level
+            self.player.velocity_y = 0
+            self.player.on_ground = True
+            self.player.is_jumping = False
+            # Only print debug message occasionally
+            if not hasattr(self, '_ground_debug_shown'):
+                print(f"🏠 Moses secured on ground: y={self.player.rect.y}, on_ground={self.player.on_ground}")
+                self._ground_debug_shown = True
+        
+        # Check platform collisions (secondary)
+        if hasattr(self, 'platforms') and self.platforms:
+            for platform in self.platforms:
+                platform_rect = pygame.Rect(platform['x'], platform['y'], 
+                                           platform['width'], platform['height'])
+                
+                # Platform collision detection
+                if (player_rect.colliderect(platform_rect) and
+                    self.player.velocity_y >= 0 and  # Falling or stationary
+                    player_rect.bottom <= platform_rect.top + 10 and  # Landing from above
+                    player_rect.bottom >= platform_rect.top - 5):  # Near platform top
+                    
+                    # Land on platform
+                    player_rect.bottom = platform_rect.top
+                    self.player.velocity_y = 0
+                    self.player.on_ground = True
+                    self.player.is_jumping = False
+                    print(f"🏗️ Moses landed on platform at y={platform['y']}")
+                    break
+    def check_enemy_collisions(self):
+        """FIXED: Enemy collision detection with proper damage"""
+        if not self.player or not hasattr(self.player, 'rect'):
+            return
+        
+        if self.player.invulnerable:
+            return  # Skip if player is invulnerable
+        
+        player_rect = self.player.rect
+        
+        # Check enemy collisions
+        for enemy in getattr(self, 'enemies', []):
+            if hasattr(enemy, 'x') and hasattr(enemy, 'y'):
+                enemy_rect = pygame.Rect(enemy.x, enemy.y, 32, 32)
+                
+                # FIXED: Proper collision detection
+                if player_rect.colliderect(enemy_rect):
+                    # Calculate damage
+                    base_damage = 10
+                    actual_damage = base_damage
+                    
+                    # Apply armor reduction
+                    if hasattr(self.player, 'armor_active') and self.player.armor_active:
+                        actual_damage = int(base_damage * 0.25)  # 75% reduction
+                        print(f"🛡️ Armor of God reduced damage: {base_damage} → {actual_damage}")
+                    
+                    # Apply damage
+                    self.player.health -= actual_damage
+                    if self.player.health < 0:
+                        self.player.health = 0
+                    
+                    # Set invulnerability
+                    self.player.invulnerable = True
+                    self.player.invulnerable_timer = self.player.invulnerable_time
+                    
+                    print(f"💔 Moses took {actual_damage} damage! Health: {self.player.health}/100")
+                    
+                    # Play hurt sound
+                    if hasattr(self.player, 'sound_manager') and self.player.sound_manager:
+                        self.player.sound_manager.play_sound('player_hurt')
+                    
+                    # Check for game over
+                    if self.player.health <= 0:
+                        self.handle_game_over()
+                    
+                    break
+    def check_item_collection(self):
+        """Check for item collection"""
+        if not self.player or not hasattr(self.player, 'rect'):
+            return
+        
+        try:
+            player_rect = self.player.rect
+            for item in getattr(self, 'items', [])[:]:
+                if hasattr(item, 'x') and hasattr(item, 'y'):
+                    item_rect = pygame.Rect(item.x, item.y, 20, 20)
+                    if player_rect.colliderect(item_rect):
+                        item_type = getattr(item, 'type', 'bread')
+                        if self.inventory:
+                            self.inventory.add_item(item_type, 1)
+                            print(f'📦 Collected {item_type}!')
+                        if hasattr(self, 'items') and item in self.items:
+                            self.items.remove(item)
+                        break
+        except:
+            pass
+
+    def update_player(self, dt):
+        """FIXED: Update player with proper physics integration"""
+        if not self.player:
+            return
+        
+        # Update player internal state first
+        self.player.update(dt)
+        
+        # FIXED: Apply collision detection after player movement
+        self.check_collisions()
+        
+        # Update camera to follow player smoothly
+        if hasattr(self, 'camera_x'):
+            target_camera_x = self.player.rect.centerx - SCREEN_WIDTH // 2
+            self.camera_x += (target_camera_x - self.camera_x) * 0.1
+            
+            # Keep camera within bounds
+            max_camera_x = max(0, (SCREEN_WIDTH * 2) - SCREEN_WIDTH)
+            self.camera_x = max(0, min(self.camera_x, max_camera_x))
+
+    def handle_npc_interaction(self, npc):
+        """FIXED: Handle NPC interactions with dialogue options"""
+        if not npc or not hasattr(npc, 'npc_type'):
+            return
+        
+        npc_type = npc.npc_type
+        
+        # Start dialogue based on NPC type
+        if npc_type == 'palace_guard':
+            self.start_npc_dialogue('palace_guard', [
+                "Halt! What business do you have in Pharaoh's palace, Hebrew?",
+                "Choose your response:",
+                "1. I come in the name of the Lord",
+                "2. I seek an audience with Pharaoh", 
+                "3. I am just passing through"
+            ])
+        elif npc_type == 'hebrew_slave':
+            self.start_npc_dialogue('hebrew_slave', [
+                "Moses! Is it really you? We have heard of your return!",
+                "Choose your response:",
+                "1. Yes, the Lord has sent me to free you",
+                "2. Gather the people, we leave tonight",
+                "3. Have faith, deliverance is at hand"
+            ])
+        elif npc_type == 'priest':
+            self.start_npc_dialogue('priest', [
+                "The gods of Egypt are mighty, Hebrew. Why do you challenge them?",
+                "Choose your response:",
+                "1. There is only one true God",
+                "2. Your gods are powerless before the Lord",
+                "3. You will see His power soon enough"
+            ])
+        else:
+            # Generic NPC interaction
+            self.start_npc_dialogue('generic', [
+                f"You speak with the {npc_type}.",
+                "Choose your response:",
+                "1. Greetings",
+                "2. What news do you have?",
+                "3. Farewell"
+            ])
+    
+    def start_npc_dialogue(self, npc_type, dialogue_lines):
+        """Start NPC dialogue with options"""
+        print(f"💬 Starting dialogue with {npc_type}")
+        for line in dialogue_lines:
+            print(f"💬 {line}")
+        
+        # Set dialogue state
+        self.in_dialogue = True
+        self.current_dialogue = {
+            'npc_type': npc_type,
+            'lines': dialogue_lines,
+            'current_line': 0,
+            'waiting_for_choice': True
+        }
+        
+        # Show dialogue on screen
+        if hasattr(self, 'dialogue_system') and self.dialogue_system:
+            self.dialogue_system.start_dialogue(npc_type, dialogue_lines[0])
+    
+
+    def handle_game_over(self):
+        """Handle game over state with options"""
+        print("💀 GAME OVER - Moses has fallen!")
+        print("Options:")
+        print("R - Restart Game")
+        print("M - Return to Main Menu") 
+        print("Q - Quit Game")
+        
+        self.game_over = True
+        self.paused = True
+        
+        # Show game over message
+        if hasattr(self, 'show_system_message'):
+            self.show_system_message("Game Over! Press R to restart, M for menu, Q to quit")
+    
     def run(self):
         """Main game loop with 60 FPS optimization"""
         print("Starting Moses Adventure...")
@@ -960,8 +1215,8 @@ class MosesAdventureGame:
         # Reset player
         if self.player:
             self.player.health = getattr(self.player, 'max_health', 100)
-            self.player.x = 150
-            self.player.y = 670
+            self.player.rect.x = 150
+            self.player.rect.y = 670
             self.player.velocity_x = 0
             self.player.velocity_y = 0
             if hasattr(self.player, 'armor_active'):
@@ -999,7 +1254,42 @@ class MosesAdventureGame:
         
         if hasattr(self, 'visual_feedback'):
             self.visual_feedback.show_message("Welcome to Moses Adventure!", 3.0)
-def update(self, dt):
+    
+    def update_player(self, dt):
+        """Update player position and physics"""
+        if not self.player:
+            return
+        
+        # Apply gravity
+        if hasattr(self.player, 'velocity_y'):
+            if not self.player.on_ground:
+                self.player.velocity_y += 800 * dt  # Gravity
+                if self.player.velocity_y > 600:  # Terminal velocity
+                    self.player.velocity_y = 600
+        
+        # Update position based on velocity
+        if hasattr(self.player, 'velocity_x') and hasattr(self.player, 'rect'):
+            self.player.rect.x += self.player.velocity_x * dt
+            
+        if hasattr(self.player, 'velocity_y') and hasattr(self.player, 'rect'):
+            self.player.rect.y += self.player.velocity_y * dt
+        
+        # Keep player on screen
+        if hasattr(self.player, 'rect'):
+            if self.player.rect.x < 0:
+                self.player.rect.x = 0
+            elif self.player.rect.x > SCREEN_WIDTH - self.player.rect.width:
+                self.player.rect.x = SCREEN_WIDTH - self.player.rect.width
+            
+            # Ground collision fallback
+            if self.player.rect.bottom > 670:
+                self.player.rect.bottom = 670
+                if hasattr(self.player, 'velocity_y'):
+                    self.player.velocity_y = 0
+                self.player.on_ground = True
+                print(f"🏠 Moses on ground at y={self.player.rect.y}")
+
+    def update(self, dt):
         """Update game state with delta time for smooth 60 FPS"""
         # Update scripture dialogue timer
         if self.scripture_dialogue_active:
@@ -1029,13 +1319,21 @@ def update(self, dt):
             if hasattr(self.sound_manager, 'play_sound'):
                 self.sound_manager.play_sound('enemy_defeat')
         
-        # Check collisions AFTER player update
+        # CRITICAL: Check collisions AFTER player update
         self.check_collisions()
+                # Check collisions AFTER player update
+                # Update player physics
+        self.update_player(dt)
+        
+        self.check_collisions()
+
+        # Check item collection
+        self.check_item_collection()
 
         # Enemy collision damage
         if self.player and self.player.health > 0:
-            player_rect = pygame.Rect(self.player.x, self.player.y, self.player.width, self.player.height)
-            for enemy in self.enemies:
+            player_rect = self.player.rect if hasattr(self.player, 'rect') else pygame.Rect(0, 0, 32, 32)
+            for enemy in getattr(self, 'enemies', []):
                 if hasattr(enemy, 'x') and hasattr(enemy, 'y'):
                     enemy_rect = pygame.Rect(enemy.x, enemy.y, 30, 30)
                     if player_rect.colliderect(enemy_rect):
@@ -1096,157 +1394,50 @@ def update(self, dt):
             if self.dialogue_system and self.dialogue_system.active:
                 self.dialogue_system.update(dt)
     
-    def check_collisions(self):
-        """Check for collisions with FIXED physics effects"""
-        if not self.player:
-            return
-        
-        try:
-            # Platform collisions with FIXED physics
-            platforms = self.level_manager.get_platforms()
-            
-            # Debug: Show platform count
-            if not hasattr(self, '_platform_debug_shown'):
-                print(f"🏗️  Loaded {len(platforms)} platforms for collision detection")
-                self._platform_debug_shown = True
-            
-            # FIXED: Check if player needs platform support after horizontal movement
-            if hasattr(self.player, 'needs_platform_check') and self.player.needs_platform_check:
-                self.player.needs_platform_check = False
-                # Check if player is still on any platform
-                on_platform = False
-                for platform in platforms:
-                    if platform and hasattr(platform, 'rect'):
-                        # Check if player's bottom is close to platform top and overlapping horizontally
-                        if (abs(self.player.rect.bottom - platform.rect.top) <= 5 and
-                            self.player.rect.right > platform.rect.left and
-                            self.player.rect.left < platform.rect.right):
-                            on_platform = True
-                            break
-                
-                # If not on any platform, start falling
-                if not on_platform:
-                    self.player.on_ground = False
-                    print("🪂 Moses walked off platform - starting to fall")
-            
-            # Regular collision detection
-            for platform in platforms:
-                if platform and hasattr(platform, 'rect') and self.player.rect.colliderect(platform.rect):
-                    self.handle_platform_collision(platform)
-            
-            # Item collisions
-            items = self.level_manager.get_items()
-            for item in items[:]:
-                if item and hasattr(item, 'rect') and self.player.rect.colliderect(item.rect):
-                    self.collect_item(item)
-            
-            # Enemy collisions (original enemies)
-            enemies = self.level_manager.get_enemies()
-            for enemy in enemies:
-                if enemy and hasattr(enemy, 'rect') and self.player.rect.colliderect(enemy.rect):
-                    self.handle_enemy_collision(enemy)
-            
-            # Simple enemy collisions
-            collision_result = self.level_manager.check_simple_enemy_collisions(self.player)
-            if collision_result == 'game_over':
-                self.state = GameState.GAME_OVER
-            elif collision_result == 'damage_taken':
-                # Player took damage but is still alive
-                pass
-        
-            
-            # Staff projectile collisions
-            if hasattr(self.player, 'staff_projectiles'):
-                for projectile in self.player.staff_projectiles[:]:
-                    # Check collision with enemies
-                    enemies = self.level_manager.get_enemies()
-                    for enemy in enemies:
-                        if enemy and hasattr(enemy, 'rect') and projectile.rect.colliderect(enemy.rect):
-                            # Staff hit enemy
-                            if hasattr(enemy, 'health'):
-                                enemy.health -= projectile.damage
-                                if enemy.health <= 0:
-                                    enemy.defeated = True
-                            elif hasattr(enemy, 'defeated'):
-                                enemy.defeated = True
-                            
-                            # Remove projectile
-                            projectile.active = False
-                            
-                            # Visual and audio feedback
-                            if hasattr(self.visual_feedback, 'create_dust_effect'):
-                                self.visual_feedback.create_dust_effect(enemy.rect.centerx, enemy.rect.centery)
-                            if hasattr(self.sound_manager, 'play_sound'):
-                                self.sound_manager.play_sound('enemy_defeat')
-                            
-                            print(f"⚡ Staff projectile hit enemy for {projectile.damage} damage!")
-                            break
-                    
-                    # Check collision with simple enemies
-                    simple_enemies = self.level_manager.get_simple_enemies()
-                    for enemy in simple_enemies:
-                        if enemy and not enemy['defeated'] and projectile.rect.colliderect(enemy['rect']):
-                            # Staff hit simple enemy
-                            enemy['defeated'] = True
-                            projectile.active = False
-                            
-                            # Visual and audio feedback
-                            if hasattr(self.visual_feedback, 'create_dust_effect'):
-                                self.visual_feedback.create_dust_effect(enemy['rect'].centerx, enemy['rect'].centery)
-                            if hasattr(self.sound_manager, 'play_sound'):
-                                self.sound_manager.play_sound('enemy_defeat')
-                            
-                            print(f"⚡ Staff projectile defeated simple enemy!")
-                            break
-        
-        except Exception as e:
-            print(f"⚠️  Collision check error: {e}")
-    
     def check_enemy_collisions(self):
-        """Check collisions between player and enemies"""
-        if not self.player or self.player.health <= 0:
+        """Check collisions between player and enemies with damage"""
+        if not self.player or not hasattr(self.player, 'rect') or self.player.health <= 0:
             return
         
-        player_rect = pygame.Rect(self.player.x, self.player.y, self.player.width, self.player.height)
+        player_rect = self.player.rect
         
-        for enemy in self.enemies[:]:
+        for enemy in getattr(self, 'enemies', [])[:]:
             if hasattr(enemy, 'x') and hasattr(enemy, 'y'):
-                enemy_rect = pygame.Rect(enemy.x, enemy.y, 
-                                       getattr(enemy, 'width', 30), 
-                                       getattr(enemy, 'height', 30))
+                enemy_rect = pygame.Rect(enemy.x, enemy.y, 30, 30)
                 
                 if player_rect.colliderect(enemy_rect):
-                    # Player takes damage
+                    # Calculate damage
                     damage = 10
-                    if hasattr(self.player, 'take_damage'):
-                        actual_damage = self.player.take_damage(damage)
-                    else:
-                        # Fallback damage system
-                        if hasattr(self.player, 'armor_active') and self.player.armor_active:
-                            damage = int(damage * 0.25)  # Armor reduces damage by 75%
-                            print(f"🛡️ Armor of God reduced damage to {damage}")
-                        
-                        self.player.health -= damage
-                        if self.player.health < 0:
-                            self.player.health = 0
-                        
-                        print(f"💔 Moses took {damage} damage from enemy! Health: {self.player.health}/{getattr(self.player, 'max_health', 100)}")
-                        actual_damage = damage
+                    if hasattr(self.player, 'armor_active') and self.player.armor_active:
+                        damage = int(damage * 0.25)
+                        print(f"🛡️ Armor reduced damage to {damage}")
+                    
+                    # Apply damage
+                    self.player.health -= damage
+                    if self.player.health < 0:
+                        self.player.health = 0
+                    
+                    print(f"💔 Moses took {damage} damage! Health: {self.player.health}/100")
                     
                     # Visual feedback
                     if hasattr(self, 'visual_feedback'):
-                        self.visual_feedback.show_message(f"Took {actual_damage} damage!", 2.0)
+                        self.visual_feedback.show_message(f"Took {damage} damage!", 2.0)
                     
-                    # Check for game over
+                    # Game over check
                     if self.player.health <= 0:
-                        self.game_over()
+                        print("💀 GAME OVER!")
+                        if hasattr(self, 'game_over'):
+                            self.game_over()
                     
-                    # Knockback effect (optional)
-                    if hasattr(self.player, 'velocity_x'):
-                        knockback_direction = 1 if enemy.x < self.player.x else -1
-                        self.player.velocity_x = knockback_direction * 3
+                    # Knockback
+                    knockback = 20
+                    if enemy.x < player_rect.x:
+                        player_rect.x += knockback
+                    else:
+                        player_rect.x -= knockback
                     
-                    break  # Only one collision per frame
+                    break
+
 
     def handle_platform_collision(self, platform):
         """Handle collision with platforms with FIXED physics"""
@@ -1868,6 +2059,10 @@ def update(self, dt):
             self.screen.blit(text_surface, text_rect)
         
         self.render_ui()
+
+        # Render inventory system
+        if self.inventory:
+            self.inventory.render(self.screen)
     
     def render_game_over(self):
         """Render game over screen"""

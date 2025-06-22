@@ -448,23 +448,30 @@ class Inventory:
             if event.key == pygame.K_i:
                 self.active = not self.active
                 print(f"📦 Inventory {'opened' if self.active else 'closed'}")
+                return True
             
             # Number keys for item usage (1-7)
             elif pygame.K_1 <= event.key <= pygame.K_7:
-                number = event.key - pygame.K_0
-                if self.use_item_by_number(number):
-                    print(f"✅ Used item #{number}")
+                if self.active:  # Only when inventory is open
+                    number = event.key - pygame.K_0
+                    if self.use_item_by_number(number):
+                        print(f"✅ Used item #{number}")
+                        return True
             
-            # Stone throwing
+            # Combat keys
             elif event.key == pygame.K_a:
                 if self.throw_stone():
-                    print("🪨 Stone thrown at enemies!")
+                    print("🪨 Stone thrown!")
+                    return True
             
-            # Staff projectile
             elif event.key == pygame.K_w:
                 if self.shoot_staff_projectile():
                     print("⚡ Staff projectile fired!")
-    
+                    return True
+        
+        return False
+
+
     def render(self, screen, ui_sprites=None):
         """Render inventory with item details"""
         if not self.active:

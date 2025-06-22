@@ -282,10 +282,24 @@ class Player:
         self.step_interval = 0.5  # Time between steps (0.5 seconds = realistic walking pace)
         self.is_step_sound_playing = False
         
-        # Position Moses properly on the ground
-        self.rect.bottom = SCREEN_HEIGHT - 50 + 1  # Slightly overlap with ground platform
-        self.on_ground = True  # Ensure Moses starts on ground for jumping
-                
+        # FIXED: Position Moses properly on the ground (stick to ground at launch)
+        ground_level = SCREEN_HEIGHT - 50  # 718 (ground platform top)
+        
+        # Use the provided x position, but ensure Moses is ON the ground
+        self.rect.x = x
+        self.rect.y = y  # Use the calculated position from main game
+        
+        # Ensure Moses is exactly on the ground level
+        if self.rect.bottom != ground_level:
+            self.rect.bottom = ground_level
+        
+        # Set ground state
+        self.on_ground = True
+        self.velocity_y = 0
+        
+        print(f"🏠 Moses positioned on ground: x={self.rect.x}, y={self.rect.y}, bottom={self.rect.bottom}")
+        print(f"🏠 Ground level: {ground_level}, Moses bottom: {self.rect.bottom}, On ground: {self.on_ground}")
+        
         # Staff system
         self.has_staff = False
         self.staff_active = False
@@ -306,7 +320,7 @@ class Player:
         self.max_health = 100
 
     def update(self, dt):
-        """Update player state with enhanced physics and smart sound system"""
+        """Update player state with FIXED physics"""
         keys = pygame.key.get_pressed()
         
         # Handle interaction state
@@ -326,11 +340,8 @@ class Player:
             if self.invulnerable_timer <= 0:
                 self.invulnerable = False
         
-        # Track movement timing
-        current_time = pygame.time.get_ticks() / 1000.0  # Convert to seconds
-        
-        # Horizontal movement with smart sound system
-        old_velocity_x = self.velocity_x
+        # FIXED: Horizontal movement
+        old_x = self.rect.x
         self.velocity_x = 0
         self.is_walking = False
         
@@ -343,145 +354,63 @@ class Player:
             self.facing_right = True
             self.is_walking = True
         
-        # FIXED: IMMEDIATE step sound system - plays instantly on key press
+        # Apply horizontal movement
+        self.rect.x += self.velocity_x
+        
+        # Handle step sounds
         if hasattr(self, 'sound_manager') and self.sound_manager and self.on_ground:
-            # Initialize previous walking state if not exists
             if not hasattr(self, '_was_walking_last_frame'):
                 self._was_walking_last_frame = False
             
-            # IMMEDIATE RESPONSE: Check if we just started walking (key press moment)
             if self.is_walking and not self._was_walking_last_frame:
-                # Just pressed arrow key - play step sound IMMEDIATELY
                 self.sound_manager.play_single_step()
                 self.step_timer = 0
-                print("🚶 Arrow key pressed - IMMEDIATE step sound!")
+                print("🚶 Step sound!")
             elif self.is_walking and self._was_walking_last_frame:
-                # Continue walking - play step sounds at intervals
                 self.step_timer += dt
                 if self.step_timer >= self.step_interval:
                     self.sound_manager.play_single_step()
                     self.step_timer = 0
-            elif not self.is_walking and self._was_walking_last_frame:
-                # Just stopped walking (released arrow key)
-                self.step_timer = 0
-                print("🛑 Arrow key released - stopped walking")
             
-            # Remember walking state for next frame
             self._was_walking_last_frame = self.is_walking
         
-        # Jumping with sound effect - UP arrow only
+        # FIXED: Jumping mechanics - UP key makes Moses jump
         if keys[pygame.K_UP]:
             if self.on_ground:
-                self.velocity_y = JUMP_STRENGTH
+                self.velocity_y = JUMP_STRENGTH  # -15
                 self.on_ground = False
                 self.is_jumping = True
-                print(f"🦘 Moses jumping! y={self.rect.y}, velocity_y={JUMP_STRENGTH}")
-                # Play jump sound if sound manager is available
+                print(f"🦘 Moses jumping! velocity_y={self.velocity_y}, was_on_ground={self.on_ground}")
                 if hasattr(self, 'sound_manager') and self.sound_manager:
                     self.sound_manager.play_jump_sound()
             else:
-                print(f"❌ Can't jump: on_ground={self.on_ground}, velocity_y={self.velocity_y}")
+                # Debug: Show why jump didn't work
+                print(f"❌ Can't jump: on_ground={self.on_ground}, y={self.rect.y}")
         
-        # Debug: Show current state occasionally
-        if keys[pygame.K_UP] or (hasattr(self, '_debug_counter') and self._debug_counter % 60 == 0):
-            print(f"🔍 Moses state: y={self.rect.y}, on_ground={self.on_ground}, velocity_y={self.velocity_y}")
-        
-        if not hasattr(self, '_debug_counter'):
-            self._debug_counter = 0
-        self._debug_counter += 1
-        
-        # IMPROVED GRAVITY SYSTEM
-        # Always apply gravity when not on ground
+        # FIXED: Gravity system - Always apply when not on ground
         if not self.on_ground:
-            self.velocity_y += GRAVITY
-            # Terminal velocity to prevent infinite acceleration
+            self.velocity_y += GRAVITY  # 0.8
+            # Terminal velocity
             if self.velocity_y > 15:
                 self.velocity_y = 15
-        else:
-            # On ground - stop falling
-            if self.velocity_y > 0:
-                self.velocity_y = 0
         
-        # Store old position for collision detection
-        old_x = self.rect.x
+        # Apply vertical movement
         old_y = self.rect.y
-        
-        # Update horizontal position
-        self.rect.x += self.velocity_x
-        
-        # FIXED: Check if player walked off a platform
-        if self.on_ground and self.velocity_x != 0:
-            self.check_platform_support()
-        
-        # Update vertical position
         self.rect.y += self.velocity_y
         
-        # Debug: Print movement info occasionally
-        if self.velocity_x != 0 and int(old_x) % 50 == 0:
-            print(f"Moses moving: x={self.rect.x}, y={self.rect.y}, on_ground={self.on_ground}")
-        
-        # Debug: Print falling info
-        if not self.on_ground and self.velocity_y > 0:
-            if int(old_y) % 20 == 0:  # Print every 20 pixels of falling
-                print(f"🪂 Moses falling: y={self.rect.y}, velocity_y={self.velocity_y}")
-        
-        # Update animation based on state
-        self.update_animation_state()
-        self.update_animation(dt)
-        
-        # Platform collision detection - FIXED VERSION
-        platform_collision = False
-        
-        # OPTIMIZED: Check if we have platforms (reduced debug output)
-        if hasattr(self, 'game_platforms') and self.game_platforms:
-            # Only check platforms near the player for better performance
-            player_x = self.rect.centerx
-            nearby_platforms = [p for p in self.game_platforms 
-                              if abs(p['x'] + p['width']/2 - player_x) < 500]  # Only check nearby platforms
-            
-            for platform in nearby_platforms:
-                platform_rect = pygame.Rect(platform['x'], platform['y'], platform['width'], platform['height'])
-                
-                # OPTIMIZED: Check if player is falling onto platform
-                if (self.velocity_y >= 0 and  # Falling or stationary
-                    self.rect.bottom >= platform_rect.top - 5 and  # Player bottom near platform top
-                    self.rect.bottom <= platform_rect.top + 15 and  # Generous landing tolerance
-                    self.rect.right > platform_rect.left + 2 and  # Horizontal overlap (small margin)
-                    self.rect.left < platform_rect.right - 2):  # Horizontal overlap (small margin)
-                    
-                    # Land on platform
-                    self.rect.bottom = platform_rect.top
-                    self.velocity_y = 0
-                    self.on_ground = True
-                    self.is_jumping = False
-                    platform_collision = True
-                    # Reduced debug output for performance
-                    if hasattr(self, 'debug_collision') and self.debug_collision:
-                        print(f"🏗️  ✅ MOSES LANDED ON PLATFORM at x={platform['x']}, y={platform['y']}")
-                    break
-        
-        # Ground collision - ensure player stays on the ground platform (fallback)
-        if not platform_collision:
-            ground_level = SCREEN_HEIGHT - 50  # Top of ground platform
-            if self.rect.bottom >= ground_level - 2:  # Allow 2 pixel tolerance
-                self.rect.bottom = ground_level
-                self.velocity_y = 0
-                self.on_ground = True
-                self.is_jumping = False
-                if not hasattr(self, '_ground_landing_logged'):
-                    print(f"🏠 Moses landed on ground level at y={self.rect.y}")
-                    self._ground_landing_logged = True
-        
-        # Keep player within reasonable bounds
+        # Keep player within horizontal bounds
         if self.rect.left < 0:
             self.rect.left = 0
-        elif self.rect.right > SCREEN_WIDTH * 5:
-            self.rect.right = SCREEN_WIDTH * 5
+        elif self.rect.right > SCREEN_WIDTH * 3:
+            self.rect.right = SCREEN_WIDTH * 3
+        
+        # Update animation
+        self.update_animation_state()
+        self.update_animation(dt)
         
         # Update staff system
         if hasattr(self, 'update_staff_system'):
             self.update_staff_system(dt)
-    
     def check_platform_support(self):
         """Check if player is still supported by a platform after horizontal movement"""
         self.needs_platform_check = True
