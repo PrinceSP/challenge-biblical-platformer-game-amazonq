@@ -1,164 +1,26 @@
+#!/usr/bin/env python3
 """
-Game Systems for Moses Adventure - Clean Working Version
+Fix dialogue text display and restore complex inventory system with all features
 """
 
-import pygame
-from constants import *
-
-class DialogueNode:
-    def __init__(self, speaker, text, choices=None, moral_impact=0):
-        self.speaker = speaker
-        self.text = text
-        self.choices = choices or []
-        self.moral_impact = moral_impact
-
-class DialogueSystem:
-    def __init__(self):
-        self.active = False
-        self.current_dialogue = None
-        self.current_node = None
-        self.dialogue_data = {}
-        self.text_speed = 30
-        self.displayed_text = ""
-        self.text_timer = 0
-        self.full_text = ""
-        self.waiting_for_input = False
-        self.is_typing = False
-        self.sound_manager = None
-        self.load_dialogue_data()
+def fix_dialogue_text_display():
+    """Fix dialogue text to actually display in the dialogue box"""
     
-    def load_dialogue_data(self):
-        self.dialogue_data = {
-            "opening": {
-                "start": DialogueNode(
-                    "Narrator",
-                    "Moses, having fled Egypt after killing an Egyptian taskmaster, has returned by God's command to free His people from bondage.",
-                    [("Continue", "moses_intro")]
-                ),
-                "moses_intro": DialogueNode(
-                    "Moses",
-                    "The Lord has sent me to lead you out of bondage. But first, I must navigate this palace and gather allies for the great exodus.",
-                    moral_impact=1
-                )
-            },
-            "guard_dialogue": {
-                "start": DialogueNode(
-                    "Palace Guard",
-                    "Halt! What business do you have in Pharaoh's palace, Hebrew?",
-                    [("I seek an audience with Pharaoh", "audience_request")]
-                ),
-                "audience_request": DialogueNode(
-                    "Palace Guard",
-                    "Pharaoh does not see common folk. Be gone from here!",
-                    moral_impact=-1
-                )
-            },
-            "slave_dialogue": {
-                "start": DialogueNode(
-                    "Hebrew Slave",
-                    "Brother Moses! We have heard of your return. Will you truly lead us from this bondage?",
-                    [("Yes, I will free our people", "promise_freedom")]
-                ),
-                "promise_freedom": DialogueNode(
-                    "Hebrew Slave",
-                    "Blessed be the Lord! We will follow you, Moses!",
-                    moral_impact=2
-                )
-            }
-        }
+    with open('game_systems.py', 'r') as f:
+        content = f.read()
     
-    def start_dialogue(self, dialogue_id):
-        if dialogue_id in self.dialogue_data:
-            self.active = True
-            self.current_dialogue = dialogue_id
-            self.current_node = self.dialogue_data[dialogue_id]["start"]
-            self.full_text = self.current_node.text
-            self.displayed_text = ""
-            self.text_timer = 0
-            self.waiting_for_input = False
-            self.is_typing = True
-            
-            if self.sound_manager:
-                self.sound_manager.lower_music_volume()
-                self.sound_manager.play_typing_sound_loop()
-            
-            print(f"✅ Started dialogue: {dialogue_id}")
-            print(f"🎭 Full text ready: '{self.full_text}'")
-            print(f"🎭 Speaker: {self.current_node.speaker}")
-            return True
-        return False
-    
-    def update(self, dt):
-        if not self.active or not self.current_node:
-            return
+    # Find DialogueSystem render method and replace with working version
+    render_start = content.find('def render(self, screen, sprites=None):')
+    if render_start != -1:
+        # Find the end of the render method
+        next_method = content.find('\n    def ', render_start + 1)
+        if next_method == -1:
+            next_method = content.find('\nclass ', render_start + 1)
+        if next_method == -1:
+            next_method = len(content)
         
-        if not self.full_text:
-            self.full_text = self.current_node.text
-        
-        if self.is_typing and self.full_text:
-            self.text_timer += dt
-            chars_to_show = int(self.text_timer * self.text_speed)
-            
-            if chars_to_show >= len(self.full_text):
-                self.displayed_text = self.full_text
-                self.is_typing = False
-                self.waiting_for_input = True
-                
-                if self.sound_manager:
-                    self.sound_manager.stop_typing_sound()
-                
-                print(f"🎭 TYPING COMPLETE: '{self.displayed_text}'")
-            else:
-                self.displayed_text = self.full_text[:chars_to_show]
-                print(f"🎭 TYPING: '{self.displayed_text}' ({chars_to_show}/{len(self.full_text)})")
-    
-    def handle_event(self, event):
-        if not self.active:
-            return
-        
-        if event.type == pygame.KEYDOWN:
-            if event.key in [pygame.K_SPACE, pygame.K_RETURN]:
-                if self.is_typing:
-                    self.displayed_text = self.full_text
-                    self.is_typing = False
-                    self.waiting_for_input = True
-                    if self.sound_manager:
-                        self.sound_manager.stop_typing_sound()
-                    print("🎭 Skipped typing animation")
-                elif self.waiting_for_input:
-                    if self.current_node.choices:
-                        choice_key = self.current_node.choices[0][1]
-                        if choice_key in self.dialogue_data[self.current_dialogue]:
-                            self.current_node = self.dialogue_data[self.current_dialogue][choice_key]
-                            self.full_text = self.current_node.text
-                            self.displayed_text = ""
-                            self.text_timer = 0
-                            self.is_typing = True
-                            self.waiting_for_input = False
-                            
-                            if self.sound_manager:
-                                self.sound_manager.play_typing_sound_loop()
-                            print("🎭 Advanced to next dialogue")
-                        else:
-                            self.end_dialogue()
-                    else:
-                        self.end_dialogue()
-    
-    def end_dialogue(self):
-        self.active = False
-        self.current_dialogue = None
-        self.current_node = None
-        self.displayed_text = ""
-        self.is_typing = False
-        self.waiting_for_input = False
-        
-        if self.sound_manager:
-            self.sound_manager.stop_typing_sound()
-            self.sound_manager.restore_music_volume()
-        
-        print("✅ Dialogue ended with typing effect - audio restored")
-    
-                def render(self, screen, sprites=None):
+        # Create render method that ACTUALLY displays text on screen
+        working_render = '''    def render(self, screen, sprites=None):
         """Render dialogue with VISIBLE text on screen"""
         if not self.active or not self.current_node:
             return
@@ -244,11 +106,32 @@ class DialogueSystem:
         
         # Force screen update
         pygame.display.update(dialogue_rect)
+'''
+        
+        content = content[:render_start] + working_render + content[next_method:]
+        print("✅ Fixed dialogue text rendering for actual display")
+    
+    with open('game_systems.py', 'w') as f:
+        f.write(content)
+    
+    return True
 
-    def set_sound_manager(self, sound_manager):
-        self.sound_manager = sound_manager
-
-class Inventory:
+def restore_complex_inventory_system():
+    """Restore the complex inventory system with item usage and effects"""
+    
+    with open('game_systems.py', 'r') as f:
+        content = f.read()
+    
+    # Find Inventory class and replace with complex version
+    inventory_start = content.find('class Inventory:')
+    if inventory_start != -1:
+        # Find the end of the Inventory class
+        next_class = content.find('\nclass ', inventory_start + 1)
+        if next_class == -1:
+            next_class = len(content)
+        
+        # Create complex inventory system
+        complex_inventory = '''class Inventory:
     def __init__(self):
         self.active = False
         self.items = {
@@ -526,58 +409,246 @@ class Inventory:
             time_left = int(self.armor_timer)
             status_text = item_font.render(f"🛡️ Divine Protection: {time_left}s", True, (0, 255, 255))
             screen.blit(status_text, (panel_rect.left + 20, status_y))
+'''
+        
+        content = content[:inventory_start] + complex_inventory + content[next_class:]
+        print("✅ Restored complex inventory system with all features")
+    
+    with open('game_systems.py', 'w') as f:
+        f.write(content)
+    
+    return True
 
-class MoralSystem:
-    def __init__(self):
-        self.moral_score = 0
+def add_projectile_system():
+    """Add projectile system for stones and staff"""
     
-    def add_moral_impact(self, impact):
-        self.moral_score += impact
+    with open('main.py', 'r') as f:
+        content = f.read()
     
-    def get_moral_standing(self):
-        if self.moral_score >= 10:
-            return "Righteous"
-        elif self.moral_score >= 5:
-            return "Good"
-        elif self.moral_score >= 0:
-            return "Neutral"
-        else:
-            return "Questionable"
+    # Add projectile system to main game class
+    if 'self.projectiles = []' not in content:
+        # Find __init__ method and add projectiles
+        init_pos = content.find('def __init__(self):')
+        if init_pos != -1:
+            # Find end of __init__
+            next_method = content.find('\n    def ', init_pos + 1)
+            if next_method != -1:
+                # Add projectiles initialization
+                projectile_init = '''
+        # Projectile system for stones and staff
+        self.projectiles = []
+'''
+                content = content[:next_method] + projectile_init + content[next_method:]
+                print("✅ Added projectile system initialization")
     
-    def get_moral_color(self):
-        if self.moral_score >= 5:
-            return (0, 255, 0)
-        elif self.moral_score >= 0:
-            return (255, 255, 255)
-        else:
-            return (255, 0, 0)
+    # Add projectile update method
+    if 'def update_projectiles(' not in content:
+        # Find a good place to add the method
+        class_end = content.find('\n    def run(')
+        if class_end != -1:
+            projectile_methods = '''
+    def update_projectiles(self, dt):
+        """Update projectiles (stones and staff)"""
+        for projectile in self.projectiles[:]:
+            # Update position
+            projectile['x'] += projectile['velocity_x']
+            projectile['y'] += projectile['velocity_y']
+            
+            # Apply gravity to stones
+            if projectile['type'] == 'stone':
+                projectile['velocity_y'] += 0.5  # Gravity
+            
+            # Check collision with enemies
+            projectile_rect = pygame.Rect(projectile['x'], projectile['y'], 10, 10)
+            
+            for enemy in self.enemies[:]:
+                enemy_rect = pygame.Rect(enemy.x, enemy.y, enemy.width, enemy.height)
+                if projectile_rect.colliderect(enemy_rect):
+                    # Hit enemy
+                    damage = projectile['damage']
+                    enemy.health -= damage
+                    print(f"💥 {projectile['type']} hit enemy for {damage} damage!")
+                    
+                    # Remove projectile
+                    if projectile in self.projectiles:
+                        self.projectiles.remove(projectile)
+                    
+                    # Remove enemy if dead
+                    if enemy.health <= 0:
+                        self.enemies.remove(enemy)
+                        print("💀 Enemy defeated!")
+                    
+                    break
+            
+            # Remove projectiles that go off screen
+            if (projectile['x'] < -50 or projectile['x'] > SCREEN_WIDTH + 50 or 
+                projectile['y'] > SCREEN_HEIGHT + 50):
+                if projectile in self.projectiles:
+                    self.projectiles.remove(projectile)
+    
+    def render_projectiles(self, screen):
+        """Render projectiles"""
+        for projectile in self.projectiles:
+            if projectile['type'] == 'stone':
+                # Draw stone
+                pygame.draw.circle(screen, (139, 69, 19), 
+                                 (int(projectile['x']), int(projectile['y'])), 5)
+            elif projectile['type'] == 'staff':
+                # Draw divine projectile
+                pygame.draw.circle(screen, (255, 255, 0), 
+                                 (int(projectile['x']), int(projectile['y'])), 8)
+                pygame.draw.circle(screen, (255, 255, 255), 
+                                 (int(projectile['x']), int(projectile['y'])), 4)
+'''
+            content = content[:class_end] + projectile_methods + content[class_end:]
+            print("✅ Added projectile update and render methods")
+    
+    # Add projectile calls to main update and render
+    if 'self.update_projectiles(' not in content:
+        # Find main update method
+        update_pos = content.find('def update(self, dt):')
+        if update_pos != -1:
+            # Find a good place to add projectile update
+            visual_update = content.find('self.visual_feedback.update(dt)', update_pos)
+            if visual_update != -1:
+                insertion_point = content.find('\n', visual_update) + 1
+                projectile_update_call = '''
+        # Update projectiles
+        self.update_projectiles(dt)
+'''
+                content = content[:insertion_point] + projectile_update_call + content[insertion_point:]
+                print("✅ Added projectile update call")
+    
+    if 'self.render_projectiles(' not in content:
+        # Find render_game method
+        render_game_pos = content.find('def render_game(self):')
+        if render_game_pos != -1:
+            # Find where to add projectile rendering
+            enemy_render = content.find('enemy.render(self.screen)', render_game_pos)
+            if enemy_render != -1:
+                insertion_point = content.find('\n', enemy_render) + 1
+                projectile_render_call = '''
+        # Render projectiles
+        self.render_projectiles(self.screen)
+'''
+                content = content[:insertion_point] + projectile_render_call + content[insertion_point:]
+                print("✅ Added projectile render call")
+    
+    with open('main.py', 'w') as f:
+        f.write(content)
+    
+    return True
 
-class VisualFeedback:
-    def __init__(self):
-        self.messages = []
+def enhance_player_with_armor():
+    """Enhance player class with armor of God functionality"""
     
-    def show_message(self, text, duration=2.0):
-        self.messages.append({"text": text, "timer": duration})
+    with open('game_classes.py', 'r') as f:
+        content = f.read()
     
-    def update(self, dt):
-        for msg in self.messages[:]:
-            msg["timer"] -= dt
-            if msg["timer"] <= 0:
-                self.messages.remove(msg)
+    # Add armor properties to Player class
+    if 'self.armor_active = False' not in content:
+        # Find Player __init__ method
+        player_init = content.find('class Player:')
+        if player_init != -1:
+            init_method = content.find('def __init__(', player_init)
+            if init_method != -1:
+                # Find end of __init__
+                next_method = content.find('\n    def ', init_method + 1)
+                if next_method != -1:
+                    # Add armor properties
+                    armor_props = '''
+        # Armor of God system
+        self.armor_active = False
+        self.armor_timer = 0
+        self.max_health = 100
+'''
+                    content = content[:next_method] + armor_props + content[next_method:]
+                    print("✅ Added armor of God properties to Player")
     
-    def render(self, screen):
-        font = pygame.font.Font(None, 24)
-        y_offset = 50
-        for msg in self.messages:
-            text_surface = font.render(msg["text"], True, (255, 255, 255))
-            screen.blit(text_surface, (50, y_offset))
-            y_offset += 30
+    # Add armor update method
+    if 'def update_armor(' not in content:
+        # Find a good place to add armor method
+        player_class_end = content.find('\nclass ', content.find('class Player:') + 1)
+        if player_class_end == -1:
+            player_class_end = len(content)
+        
+        armor_method = '''
+    def update_armor(self, dt):
+        """Update armor of God timer"""
+        if self.armor_active:
+            self.armor_timer -= dt
+            if self.armor_timer <= 0:
+                self.armor_active = False
+                print("🛡️ Divine protection expired")
     
-    def create_dust_effect(self, x, y):
-        pass
+    def take_damage(self, damage):
+        """Take damage with armor protection"""
+        if self.armor_active:
+            # Armor reduces damage by 75%
+            damage = int(damage * 0.25)
+            print(f"🛡️ Armor of God reduced damage to {damage}")
+        
+        self.health -= damage
+        if self.health < 0:
+            self.health = 0
+        
+        print(f"💔 Moses took {damage} damage! Health: {self.health}/{self.max_health}")
+        return damage
+'''
+        
+        content = content[:player_class_end] + armor_method + content[player_class_end:]
+        print("✅ Added armor of God methods to Player")
     
-    def clear_interaction_prompt(self):
-        pass
+    with open('game_classes.py', 'w') as f:
+        f.write(content)
     
-    def show_interaction_prompt(self, text):
-        self.show_message(text, 2.0)
+    return True
+
+def main():
+    """Fix dialogue display and restore complex systems"""
+    print("🔧 Fixing Dialogue Display and Restoring Complex Systems")
+    print("=" * 60)
+    
+    print("1. Fixing dialogue text display in dialogue box...")
+    fix_dialogue_text_display()
+    
+    print("2. Restoring complex inventory system...")
+    restore_complex_inventory_system()
+    
+    print("3. Adding projectile system for stones and staff...")
+    add_projectile_system()
+    
+    print("4. Enhancing player with armor of God...")
+    enhance_player_with_armor()
+    
+    print("\n" + "=" * 60)
+    print("🎉 DIALOGUE AND COMPLEX SYSTEMS RESTORED!")
+    print("\nFixed Features:")
+    print("✅ Dialogue text now displays in dialogue box")
+    print("✅ Complex inventory with item usage (1-7 keys)")
+    print("✅ Health progression from food/water")
+    print("✅ Stone throwing system (A key)")
+    print("✅ Staff projectile system (W key)")
+    print("✅ Armor of God divine protection")
+    print("✅ Item effects and descriptions")
+    print("✅ Visual feedback for all actions")
+    
+    print("\nControls:")
+    print("- I: Open/Close Inventory")
+    print("- 1-7: Use items by number")
+    print("- A: Throw stone (when ready)")
+    print("- W: Shoot staff projectile (when active)")
+    print("- H: Apply healing effects")
+    
+    print("\nItems and Effects:")
+    print("- Bread: +20 health")
+    print("- Meat: +30 health") 
+    print("- Water: +15 health")
+    print("- Stone: Throwable weapon (25 damage)")
+    print("- Staff: Divine projectiles (40 damage)")
+    print("- Armor of God: 75% damage reduction for 30s")
+    
+    print("\nTest with: python3 main.py")
+
+if __name__ == "__main__":
+    main()

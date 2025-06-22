@@ -156,6 +156,9 @@ class MosesAdventureGame:
         
         print("✅ Item consumption text timer system initialized")
         
+        # Projectile system for stones and staff
+        self.projectiles = []
+
     def initialize_multi_level_world(self):
         """Initialize the multi-level platform world"""
         print("🏗️  Creating multi-level platform world...")
@@ -492,6 +495,59 @@ class MosesAdventureGame:
             print(f"Error loading sprite {path}: {e}")
             return None
     
+    def update_projectiles(self, dt):
+        """Update projectiles (stones and staff)"""
+        for projectile in self.projectiles[:]:
+            # Update position
+            projectile['x'] += projectile['velocity_x']
+            projectile['y'] += projectile['velocity_y']
+            
+            # Apply gravity to stones
+            if projectile['type'] == 'stone':
+                projectile['velocity_y'] += 0.5  # Gravity
+            
+            # Check collision with enemies
+            projectile_rect = pygame.Rect(projectile['x'], projectile['y'], 10, 10)
+            
+            for enemy in self.enemies[:]:
+                enemy_rect = pygame.Rect(enemy.x, enemy.y, enemy.width, enemy.height)
+                if projectile_rect.colliderect(enemy_rect):
+                    # Hit enemy
+                    damage = projectile['damage']
+                    enemy.health -= damage
+                    print(f"💥 {projectile['type']} hit enemy for {damage} damage!")
+                    
+                    # Remove projectile
+                    if projectile in self.projectiles:
+                        self.projectiles.remove(projectile)
+                    
+                    # Remove enemy if dead
+                    if enemy.health <= 0:
+                        self.enemies.remove(enemy)
+                        print("💀 Enemy defeated!")
+                    
+                    break
+            
+            # Remove projectiles that go off screen
+            if (projectile['x'] < -50 or projectile['x'] > SCREEN_WIDTH + 50 or 
+                projectile['y'] > SCREEN_HEIGHT + 50):
+                if projectile in self.projectiles:
+                    self.projectiles.remove(projectile)
+    
+    def render_projectiles(self, screen):
+        """Render projectiles"""
+        for projectile in self.projectiles:
+            if projectile['type'] == 'stone':
+                # Draw stone
+                pygame.draw.circle(screen, (139, 69, 19), 
+                                 (int(projectile['x']), int(projectile['y'])), 5)
+            elif projectile['type'] == 'staff':
+                # Draw divine projectile
+                pygame.draw.circle(screen, (255, 255, 0), 
+                                 (int(projectile['x']), int(projectile['y'])), 8)
+                pygame.draw.circle(screen, (255, 255, 255), 
+                                 (int(projectile['x']), int(projectile['y'])), 4)
+
     def run(self):
         """Main game loop with 60 FPS optimization"""
         print("Starting Moses Adventure...")
@@ -948,6 +1004,9 @@ class MosesAdventureGame:
                 if message['timer'] <= 0:
                     self.feedback_messages.remove(message)
             self.visual_feedback.update(dt)
+
+        # Update projectiles
+        self.update_projectiles(dt)
         
         elif self.state == GameState.DIALOGUE:
             # Update dialogue system for typing effect

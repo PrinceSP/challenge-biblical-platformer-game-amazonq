@@ -300,6 +300,11 @@ class Player:
         self.armor_buff = 0
         self.max_health_with_armor = self.max_health
 
+        # Armor of God system
+        self.armor_active = False
+        self.armor_timer = 0
+        self.max_health = 100
+
     def update(self, dt):
         """Update player state with enhanced physics and smart sound system"""
         keys = pygame.key.get_pressed()
@@ -687,6 +692,28 @@ class Player:
     def get_staff_time_remaining(self):
         """Get remaining staff time in seconds"""
         return max(0, self.staff_timer) if self.staff_active else 0
+
+    def update_armor(self, dt):
+        """Update armor of God timer"""
+        if self.armor_active:
+            self.armor_timer -= dt
+            if self.armor_timer <= 0:
+                self.armor_active = False
+                print("🛡️ Divine protection expired")
+    
+    def take_damage(self, damage):
+        """Take damage with armor protection"""
+        if self.armor_active:
+            # Armor reduces damage by 75%
+            damage = int(damage * 0.25)
+            print(f"🛡️ Armor of God reduced damage to {damage}")
+        
+        self.health -= damage
+        if self.health < 0:
+            self.health = 0
+        
+        print(f"💔 Moses took {damage} damage! Health: {self.health}/{self.max_health}")
+        return damage
 
 class Camera:
     def __init__(self):
